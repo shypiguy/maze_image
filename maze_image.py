@@ -29,7 +29,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("input_file",  help="the graphics file to be converted")
 parser.add_argument("output_file",  help="destination for the maze graphic file")
-parser.add_argument("--max_dimension", help="specify the max (width or height) of the output maze, default = 200",  type=int)
+parser.add_argument("--max_dimension", help="specify the max (width or height) of the output maze, default = 100",  type=int)
 
 args=parser.parse_args()
 
