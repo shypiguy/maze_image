@@ -24,7 +24,9 @@
 
 
 import random
-import Image
+import sys
+from PIL import Image
+sys.modules['Image'] = Image
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("input_file",  help="the graphics file to be converted")
