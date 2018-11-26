@@ -77,6 +77,8 @@ squares_entered = 0
 squares_blocked=0
 systematic = 0
 
+frame_num = 0
+
 #initialize memory for the maze
 maze = [[[0 for element in range(6)] for row in range(width)] for col in range(height)]
 
@@ -137,7 +139,7 @@ def random_square(initialize):
         bad_tries = bad_tries + 1
         if bad_tries > 1000:
             systematic = 1
-            #print "switching to systematic"
+            # switching to systematic
             return random_square(initialize)
     return your_square
     
@@ -169,6 +171,9 @@ def move(row, col, direction):
         maze[row][col-1][entered]=1
         maze[row][col-1][right]=1
     #squares_entered = squares_entered + 1
+    draw_square(row, col)
+    draw_square(frow, fcol)
+    write_frame()
     return [frow, fcol]
  
 def blocked_count():
@@ -187,31 +192,80 @@ def entered_count():
             ec = ec + maze[row][col][entered]
     return ec
 
-def print_unentered():
-    for row  in range (height):
-        for col in range (width):
-            if maze[row][col][entered] == 0:
-                print row,  col,  seq[(row*height)+(col)]
-                print maze[row][col]
-   
 
+
+def draw_square(drow, dcol):
+    global maze
+    global imseq
+    global wval
+    global bval
+    global frame_num
+    top_corner = (drow*64*width)+ (dcol*8)
+    if maze[drow][dcol][blocked]== 1:
+        for brow in range (8):
+            for bcol in range (8):
+                imseq[top_corner+(brow*width*8)+(bcol)] = 0
+    else:
+        #top left corner
+        imseq[top_corner] = 0
+        #top right corner
+        imseq[top_corner + 7] = 0
+        #bottom left corner
+        imseq[top_corner+(7*width*8)] = 0
+        #bottom right corner
+        imseq[top_corner+(7*width*8)+7] = 0
+        # top edge
+        pval = wval
+        if maze[drow][dcol][up] == 0:
+            pval = bval
+        for i in range (1,7):
+            imseq[top_corner + i] = pval
+        # bottom edge
+        pval = wval
+        if maze[drow][dcol][down] == 0:
+            pval = bval
+        for i in range (1,7):
+            imseq[top_corner +(7*width*8)+ i] = pval
+        # left edge
+        pval = wval
+        if maze[drow][dcol][left] == 0:
+            pval = bval
+        for i in range (1,7):
+            imseq[top_corner + (width * i*8)] = pval
+        # right edge
+        pval = wval    
+        if maze[drow][dcol][right] == 0:
+            pval = bval
+        for i in range (1,7):
+            imseq[top_corner + 7 + (i * width*8)] = pval
+
+
+def write_frame():
+    global imseq
+    global frame_num
+    im.putdata(imseq)
+    im.save(args.output_file+str(frame_num).zfill(6)+".png")
+    frame_num = frame_num + 1
 #current_square = random_square()
 #current_direction = random_direction()
-#print current_square[0]
-#print current_square[1]
-#print current_direction
-#print move(current_square[0], current_square[1], current_direction)
-#print move(1, 1, 0)
+ 
+
+#"/home/bill/Development/Python/maze/tf.png"
+wval = 255
+bval = 0
 
 # set up the black squares as unavailable
 seq = list(im.getdata())
-#print seq
+
+im=Image.new("1", (width*8, height*8))
+imseq = [255 for pixel in range (im.size[0]*im.size[1])]
+ 
 for row in range(height):
     for col in range(width):
         if seq[(row*width)+(col)] == 0:
             for info in range(6):
                 maze[row][col][info] = 1
-            #squares_blocked = squares_blocked + 1
+            draw_square(row,  col)
             
 #print "after blocking black pixels:"
 #print entered_count() 
@@ -222,30 +276,26 @@ for row in range(height):
         if seq[(row*width)+(col)] == 255: 
             if stuck(row, col) == 1:
                 maze[row][col][entered] = 1
-#print "after blocking isolated white pixels:"
+# after blocking isolated white pixels:
 squares_entered = entered_count()
-#print squares_entered
-#print maze
-#print squares_blocked,  height * width
+ 
 
 current_square = random_square(1)
 maze[current_square[0]][current_square[1]][entered] = 1
 while squares_entered < (height * width):
     
-    #print "new walk"
+    #new walk
     
     while stuck(current_square[0], current_square[1]) ==0 and maze[current_square[0]][current_square[1]][entered] == 1:
         current_direction = random_direction()
         while move_blocked(current_square[0], current_square[1], current_direction) == 1:
             current_direction = random_direction()
-        #print "row = %d, col = %d, direction = %d" % (current_square[0], current_square[1], current_direction)
-        
+         
         current_square = move(current_square[0], current_square[1], current_direction)
         #maze[current_square[0]][current_square[1]][entered] = 1
     squares_entered = entered_count()
     if squares_entered > (width*height):
         break
-    #print   (width*height) - squares_entered
     current_square = random_square(0)
     maze[current_square[0]][current_square[1]][entered] = 1  
 
@@ -255,8 +305,8 @@ print "Calculated"
 
 # build the maze image
 #im=im.resize((im.size[0]*8,im.size[1]*8),Image.NEAREST)
-im=Image.new("1", (width*8, height*8))
-imseq = [255 for pixel in range (im.size[0]*im.size[1])]
+#im=Image.new("1", (width*8, height*8))
+#imseq = [255 for pixel in range (im.size[0]*im.size[1])]
 #"/home/bill/Development/Python/maze/tf.png"
 wval = 255
 bval = 0
@@ -308,7 +358,7 @@ for dot in sdata:
     imseq[dot[0]*width*8 + dot[1]] =bval
 # Finish Square
 #top_corner = (height*8*width)+ (width*8)
-for dot in fdata:
+for dot in fdata:   
     imseq[top_corner + dot[0]*width*8 + dot[1]] = bval
 im.putdata(imseq)
 im.save(args.output_file+".png")
@@ -449,6 +499,8 @@ else:
                     imseq[top_corner + dot[0]*width*8 + dot[1]] = [255, 0, 0]
     im.putdata(imseq)
     im.save(args.output_file+"_solution.png")
+    for i in range (1, 240):
+        write_frame()
 
 
 print "done"
