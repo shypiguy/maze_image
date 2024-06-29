@@ -56,7 +56,7 @@ if longest > max_dimension:
     factor = longest / max_dimension
 
 
-im=im.resize((im.size[0]/factor,im.size[1]/factor),Image.BICUBIC)
+im=im.resize((int(im.size[0]/factor),int(im.size[1]/factor)),Image.BICUBIC)
 im = im.convert("1")
 
 random.seed()
@@ -301,7 +301,7 @@ while squares_entered < (height * width):
 
    
 
-print "Calculated"
+print ("Calculated")
 
 # build the maze image
 #im=im.resize((im.size[0]*8,im.size[1]*8),Image.NEAREST)
@@ -444,9 +444,9 @@ while pass_thru_origin <= 1 and solved == 0:
         solved = 1
 
 if solved == 0:
-    print "No solution"
+    print ("No solution")
 else:
-    print "SOLVED!"
+    print( "SOLVED!")
     imseq = [255 for pixel in range (im.size[0]*im.size[1])]
     wval = 255
     bval = 0
@@ -496,13 +496,13 @@ else:
             top_corner = (row*64*width)+ (col*8)
             if path[row][col] ==1:
                 for dot in fdata:
-                    imseq[top_corner + dot[0]*width*8 + dot[1]] = [255, 0, 0]
+                    imseq[top_corner + dot[0]*width*8 + dot[1]] = 255#[255, 0, 0]
     im.putdata(imseq)
     im.save(args.output_file+"_solution.png")
     for i in range (1, 240):
         write_frame()
 
 
-print "done"
+print ("done")
 
 
