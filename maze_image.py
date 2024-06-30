@@ -173,7 +173,7 @@ def move(row, col, direction):
     #squares_entered = squares_entered + 1
     draw_square(row, col)
     draw_square(frow, fcol)
-    write_frame()
+    # diabling frame write for debug purposes write_frame()
     return [frow, fcol]
  
 def blocked_count():
@@ -447,60 +447,25 @@ if solved == 0:
     print ("No solution")
 else:
     print( "SOLVED!")
-    imseq = [255 for pixel in range (im.size[0]*im.size[1])]
+    im = im.convert("RGB")
+    r_imseq = list(im.getdata(band=0))
+    g_imseq = list(im.getdata(band=1))
+    b_imseq = list(im.getdata(band=2))
     wval = 255
     bval = 0
-    for row in range (height):
-        for col in range (width):
-            top_corner = (row*64*width)+ (col*8)
-            if maze[row][col][blocked]== 1:
-                for brow in range (8):
-                    for bcol in range (8):
-                        imseq[top_corner+(brow*width*8)+(bcol)] = 0
-            else:
-                #top left corner
-                imseq[top_corner] = 0
-                #top right corner
-                imseq[top_corner + 7] = 0
-                #bottom left corner
-                imseq[top_corner+(7*width*8)] = 0
-                #bottom right corner
-                imseq[top_corner+(7*width*8)+7] = 0
-                # top edge
-                pval = wval
-                if maze[row][col][up] == 0:
-                    pval = bval
-                for i in range (1,7):
-                    imseq[top_corner + i] = pval
-                # bottom edge
-                pval = wval
-                if maze[row][col][down] == 0:
-                    pval = bval
-                for i in range (1,7):
-                    imseq[top_corner +(7*width*8)+ i] = pval
-                # left edge
-                pval = wval
-                if maze[row][col][left] == 0:
-                    pval = bval
-                for i in range (1,7):
-                    imseq[top_corner + (width * i*8)] = pval
-                # right edge
-                pval = wval    
-                if maze[row][col][right] == 0:
-                    pval = bval
-                for i in range (1,7):
-                    imseq[top_corner + 7 + (i * width*8)] = pval
-    #im.convert("RGB")
+    im.save(args.output_file+"_rgb.png")
     for row in range (height):
         for col in range (width):
             top_corner = (row*64*width)+ (col*8)
             if path[row][col] ==1:
                 for dot in fdata:
-                    imseq[top_corner + dot[0]*width*8 + dot[1]] = bval #(255, 0, 0)
-    im.putdata(imseq)
+                    g_imseq[top_corner + dot[0]*width*8 + dot[1]] = 0 #(255, 0, 0)
+                    b_imseq[top_corner + dot[0]*width*8 + dot[1]] = 0 #(255, 0, 0)
+    #print(list(zip(r_imseq, g_imseq, b_imseq)))
+    im.putdata(list(zip(r_imseq, g_imseq, b_imseq)))
     im.save(args.output_file+"_solution.png")
-    for i in range (1, 240):
-        write_frame()
+    #for i in range (1, 240):
+    #    write_frame()
 
 
 print ("done")
