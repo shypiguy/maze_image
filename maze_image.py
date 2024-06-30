@@ -490,13 +490,13 @@ else:
                     pval = bval
                 for i in range (1,7):
                     imseq[top_corner + 7 + (i * width*8)] = pval
-    im.convert("RGB")
+    #im.convert("RGB")
     for row in range (height):
         for col in range (width):
             top_corner = (row*64*width)+ (col*8)
             if path[row][col] ==1:
                 for dot in fdata:
-                    imseq[top_corner + dot[0]*width*8 + dot[1]] = 255#[255, 0, 0]
+                    imseq[top_corner + dot[0]*width*8 + dot[1]] = bval #(255, 0, 0)
     im.putdata(imseq)
     im.save(args.output_file+"_solution.png")
     for i in range (1, 240):
