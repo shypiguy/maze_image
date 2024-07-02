@@ -26,6 +26,9 @@
 import random
 import sys
 from PIL import Image
+from PIL import ImageOps
+from PIL import ImageStat
+from PIL import ImageEnhance
 sys.modules['Image'] = Image
 import argparse
 parser = argparse.ArgumentParser()
@@ -55,9 +58,22 @@ else:
 if longest > max_dimension:
     factor = longest / max_dimension
 
-
+print(ImageStat.Stat(im).mean)
+# Analyze the overall brightness of the image - target is 210
+channel_means = ImageStat.Stat(im).mean
+overall_mean = (channel_means[0]+channel_means[1]+channel_means[2])/3
+# Adjust the brightness to the target
+while overall_mean < 170:
+    enhancer=ImageEnhance.Brightness(im)
+    im = enhancer.enhance(1.7)
+    channel_means = ImageStat.Stat(im).mean
+    overall_mean = (channel_means[0]+channel_means[1]+channel_means[2])/3
+    print(overall_mean)
 im=im.resize((int(im.size[0]/factor),int(im.size[1]/factor)),Image.BICUBIC)
 im = im.convert("1")
+print(ImageStat.Stat(im).mean)
+# add a border
+im = ImageOps.expand(im, border=3, fill=255) 
 
 random.seed()
 maze = []
@@ -459,8 +475,8 @@ else:
             top_corner = (row*64*width)+ (col*8)
             if path[row][col] ==1:
                 for dot in fdata:
-                    g_imseq[top_corner + dot[0]*width*8 + dot[1]] = 0 #(255, 0, 0)
-                    b_imseq[top_corner + dot[0]*width*8 + dot[1]] = 0 #(255, 0, 0)
+                    g_imseq[top_corner + dot[0]*width*8 + dot[1]] = 0 
+                    b_imseq[top_corner + dot[0]*width*8 + dot[1]] = 0 
     #print(list(zip(r_imseq, g_imseq, b_imseq)))
     im.putdata(list(zip(r_imseq, g_imseq, b_imseq)))
     im.save(args.output_file+"_solution.png")
