@@ -60,18 +60,19 @@ if longest > max_dimension:
 
 print(ImageStat.Stat(im).mean)
 # Analyze the overall brightness of the image - target is 210
-channel_means = ImageStat.Stat(im).mean
-overall_mean = (channel_means[0]+channel_means[1]+channel_means[2])/3
+tempim = im
+bwtempim = tempim.convert("1")
+littletempim=bwtempim.resize((int(bwtempim.size[0]/factor),int(bwtempim.size[1]/factor)),Image.BICUBIC)
+overall_mean = ImageStat.Stat(littletempim).mean[0]
 # Adjust the brightness to the target
 while overall_mean < 170:
-    enhancer=ImageEnhance.Brightness(im)
-    im = enhancer.enhance(1.7)
-    channel_means = ImageStat.Stat(im).mean
-    overall_mean = (channel_means[0]+channel_means[1]+channel_means[2])/3
+    enhancer=ImageEnhance.Brightness(tempim)
+    tempim = enhancer.enhance(1.1)
+    bwtempim = tempim.convert("1")
+    littletempim=bwtempim.resize((int(bwtempim.size[0]/factor),int(bwtempim.size[1]/factor)),Image.BICUBIC)
+    overall_mean = ImageStat.Stat(littletempim).mean[0]
     print(overall_mean)
-im=im.resize((int(im.size[0]/factor),int(im.size[1]/factor)),Image.BICUBIC)
-im = im.convert("1")
-print(ImageStat.Stat(im).mean)
+im = littletempim
 # add a border
 im = ImageOps.expand(im, border=3, fill=255) 
 
