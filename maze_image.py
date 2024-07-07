@@ -25,12 +25,13 @@
 
 import random
 import sys
-from PIL import Image
-from PIL import ImageOps
-from PIL import ImageStat
-from PIL import ImageEnhance
+from PIL import Image, ImageOps, ImageStat, ImageEnhance
+
 sys.modules['Image'] = Image
 import argparse
+
+
+#Set up command line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("input_file",  help="the graphics file to be converted")
 parser.add_argument("output_file",  help="destination for the maze graphic file")
@@ -38,6 +39,7 @@ parser.add_argument("--max_dimension", help="specify the max (width or height) o
 
 args=parser.parse_args()
 
+#Provide a default value for max_dimension if it's not specified on the command line
 if args.max_dimension:
     max_dimension = args.max_dimension
 else:
@@ -58,8 +60,10 @@ else:
 if longest > max_dimension:
     factor = longest / max_dimension
 
-print(ImageStat.Stat(im).mean)
-# Analyze the overall brightness of the image - target is 210
+# backup the original image
+orig_im = im
+#print(ImageStat.Stat(im).mean)
+# Analyze the overall brightness of the reduced black and white image - target is 170
 tempim = im
 bwtempim = tempim.convert("1")
 littletempim=bwtempim.resize((int(bwtempim.size[0]/factor),int(bwtempim.size[1]/factor)),Image.BICUBIC)
@@ -72,6 +76,7 @@ while overall_mean < 170:
     littletempim=bwtempim.resize((int(bwtempim.size[0]/factor),int(bwtempim.size[1]/factor)),Image.BICUBIC)
     overall_mean = ImageStat.Stat(littletempim).mean[0]
     print(overall_mean)
+# set the maze image
 im = littletempim
 # add a border
 im = ImageOps.expand(im, border=3, fill=255) 
@@ -377,8 +382,32 @@ for dot in sdata:
 #top_corner = (height*8*width)+ (width*8)
 for dot in fdata:   
     imseq[top_corner + dot[0]*width*8 + dot[1]] = bval
+# write the black and white maze
 im.putdata(imseq)
 im.save(args.output_file+".png")
+
+#convert to rgb and apply the original image on top
+orig_im = orig_im.resize((int(orig_im.size[0]/factor*8),int(orig_im.size[1]/factor*8)),Image.BICUBIC)
+orig_im = ImageOps.expand(orig_im, border=24, fill=(255,255,255)) 
+orig_imseq_r = list(orig_im.getdata(0))
+orig_imseq_g = list(orig_im.getdata(1))
+orig_imseq_b = list(orig_im.getdata(2))
+maze_im = im.convert("RGB")
+maze_imseq_r = list(maze_im.getdata(0))
+maze_imseq_g = list(maze_im.getdata(1))
+maze_imseq_b = list(maze_im.getdata(2))
+for row in range (height):
+    for col in range (width):
+        top_corner = (row*64*width)+ (col*8)
+        if maze[row][col][blocked]== 1:
+            for brow in range (1,7):
+                for bcol in range (1,7):
+                    maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+maze_im.putdata(list(zip(maze_imseq_r, maze_imseq_g, maze_imseq_b)))
+maze_im.save(args.output_file+"_recolor.png")
+
 
 
 
@@ -474,6 +503,7 @@ else:
     for row in range (height):
         for col in range (width):
             top_corner = (row*64*width)+ (col*8)
+            # apply the solution dots
             if path[row][col] ==1:
                 for dot in fdata:
                     g_imseq[top_corner + dot[0]*width*8 + dot[1]] = 0 
