@@ -69,7 +69,7 @@ bwtempim = tempim.convert("1")
 littletempim=bwtempim.resize((int(bwtempim.size[0]/factor),int(bwtempim.size[1]/factor)),Image.BICUBIC)
 overall_mean = ImageStat.Stat(littletempim).mean[0]
 # Adjust the brightness to the target
-while overall_mean < 170:
+while overall_mean < 128:
     enhancer=ImageEnhance.Brightness(tempim)
     tempim = enhancer.enhance(1.1)
     bwtempim = tempim.convert("1")
@@ -402,6 +402,65 @@ for row in range (height):
         if maze[row][col][blocked]== 1:
             for brow in range (1,7):
                 for bcol in range (1,7):
+                    # fill in block body with color image data
+                    maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+            # get adjacent blockage info
+            blocked_up = False
+            blocked_right = False
+            blocked_down = False
+            blocked_left = False
+            if maze[row-1][col][blocked]== 1:
+                    blocked_up = True
+                    for brow in range(1):
+                        for bcol in range (1,7):
+                            maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                            maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                            maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+            if maze[row][col+1][blocked]== 1:
+                    blocked_right = True
+                    for brow in range(1,7):
+                        for bcol in range (7,8):
+                            maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                            maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                            maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+            if maze[row+1][col][blocked]== 1:
+                    blocked_down = True
+                    for brow in range(7,8):
+                        for bcol in range (1,7):
+                            maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                            maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                            maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+            if maze[row][col-1][blocked]== 1:
+                    blocked_left = True
+                    for brow in range(1,7):
+                        for bcol in range (1):
+                            maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                            maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                            maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+            # do the corners
+            if blocked_up and blocked_right:
+                    brow = 0
+                    bcol = 7
+                    maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+            if blocked_down and blocked_right:
+                    brow = 7
+                    bcol = 7
+                    maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+            if blocked_down and blocked_left:
+                    brow = 7
+                    bcol = 0
+                    maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+            if blocked_up and blocked_left:
+                    brow = 0
+                    bcol = 0
                     maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
                     maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
                     maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
