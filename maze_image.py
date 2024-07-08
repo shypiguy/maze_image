@@ -387,7 +387,7 @@ im.putdata(imseq)
 im.save(args.output_file+".png")
 
 #convert to rgb and apply the original image on top
-orig_im = orig_im.resize((int(orig_im.size[0]/factor*8),int(orig_im.size[1]/factor*8)),Image.BICUBIC)
+orig_im = orig_im.resize((im.size[0]-48,im.size[1]-48),Image.BICUBIC)
 orig_im = ImageOps.expand(orig_im, border=24, fill=(255,255,255)) 
 orig_imseq_r = list(orig_im.getdata(0))
 orig_imseq_g = list(orig_im.getdata(1))
