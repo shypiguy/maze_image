@@ -36,6 +36,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("input_file",  help="the graphics file to be converted")
 parser.add_argument("output_file",  help="destination for the maze graphic file")
 parser.add_argument("--max_dimension", help="specify the max (width or height) of the output maze, default = 100",  type=int)
+parser.add_argument("--sharpen", help="specify the sharpening factor applied before generating the maze, default = 1",  type=float)
+
 
 args=parser.parse_args()
 
@@ -44,6 +46,12 @@ if args.max_dimension:
     max_dimension = args.max_dimension
 else:
     max_dimension = 100
+
+#Provide a default value for sharpen if it's not specified on the command line
+if args.max_dimension:
+    sharpness = args.sharpen
+else:
+    sharpness = 1.0    
 
 
 im = Image.open(args.input_file)
@@ -65,6 +73,8 @@ orig_im = im
 #print(ImageStat.Stat(im).mean)
 # Analyze the overall brightness of the reduced black and white image - target is 170
 tempim = im
+enhancer=ImageEnhance.Sharpness(tempim)
+tempim=enhancer.enhance(sharpness)
 bwtempim = tempim.convert("1")
 littletempim=bwtempim.resize((int(bwtempim.size[0]/factor),int(bwtempim.size[1]/factor)),Image.BICUBIC)
 overall_mean = ImageStat.Stat(littletempim).mean[0]
