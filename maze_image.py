@@ -25,9 +25,13 @@
 
 import random
 import sys
-from PIL import Image
+from PIL import Image, ImageOps, ImageStat, ImageEnhance
+
 sys.modules['Image'] = Image
 import argparse
+
+
+#Set up command line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("input_file",  help="the graphics file to be converted")
 parser.add_argument("output_file",  help="destination for the maze graphic file")
@@ -35,6 +39,7 @@ parser.add_argument("--max_dimension", help="specify the max (width or height) o
 
 args=parser.parse_args()
 
+#Provide a default value for max_dimension if it's not specified on the command line
 if args.max_dimension:
     max_dimension = args.max_dimension
 else:
@@ -55,9 +60,26 @@ else:
 if longest > max_dimension:
     factor = longest / max_dimension
 
-
-im=im.resize((im.size[0]/factor,im.size[1]/factor),Image.BICUBIC)
-im = im.convert("1")
+# backup the original image
+orig_im = im
+#print(ImageStat.Stat(im).mean)
+# Analyze the overall brightness of the reduced black and white image - target is 170
+tempim = im
+bwtempim = tempim.convert("1")
+littletempim=bwtempim.resize((int(bwtempim.size[0]/factor),int(bwtempim.size[1]/factor)),Image.BICUBIC)
+overall_mean = ImageStat.Stat(littletempim).mean[0]
+# Adjust the brightness to the target
+while overall_mean < 128:
+    enhancer=ImageEnhance.Brightness(tempim)
+    tempim = enhancer.enhance(1.1)
+    bwtempim = tempim.convert("1")
+    littletempim=bwtempim.resize((int(bwtempim.size[0]/factor),int(bwtempim.size[1]/factor)),Image.BICUBIC)
+    overall_mean = ImageStat.Stat(littletempim).mean[0]
+    print(overall_mean)
+# set the maze image
+im = littletempim
+# add a border
+im = ImageOps.expand(im, border=3, fill=255) 
 
 random.seed()
 maze = []
@@ -76,6 +98,8 @@ blocked=5
 squares_entered = 0
 squares_blocked=0
 systematic = 0
+
+frame_num = 0
 
 #initialize memory for the maze
 maze = [[[0 for element in range(6)] for row in range(width)] for col in range(height)]
@@ -137,7 +161,7 @@ def random_square(initialize):
         bad_tries = bad_tries + 1
         if bad_tries > 1000:
             systematic = 1
-            #print "switching to systematic"
+            # switching to systematic
             return random_square(initialize)
     return your_square
     
@@ -169,6 +193,9 @@ def move(row, col, direction):
         maze[row][col-1][entered]=1
         maze[row][col-1][right]=1
     #squares_entered = squares_entered + 1
+    draw_square(row, col)
+    draw_square(frow, fcol)
+    # diabling frame write for debug purposes write_frame()
     return [frow, fcol]
  
 def blocked_count():
@@ -187,31 +214,80 @@ def entered_count():
             ec = ec + maze[row][col][entered]
     return ec
 
-def print_unentered():
-    for row  in range (height):
-        for col in range (width):
-            if maze[row][col][entered] == 0:
-                print row,  col,  seq[(row*height)+(col)]
-                print maze[row][col]
-   
 
+
+def draw_square(drow, dcol):
+    global maze
+    global imseq
+    global wval
+    global bval
+    global frame_num
+    top_corner = (drow*64*width)+ (dcol*8)
+    if maze[drow][dcol][blocked]== 1:
+        for brow in range (8):
+            for bcol in range (8):
+                imseq[top_corner+(brow*width*8)+(bcol)] = 0
+    else:
+        #top left corner
+        imseq[top_corner] = 0
+        #top right corner
+        imseq[top_corner + 7] = 0
+        #bottom left corner
+        imseq[top_corner+(7*width*8)] = 0
+        #bottom right corner
+        imseq[top_corner+(7*width*8)+7] = 0
+        # top edge
+        pval = wval
+        if maze[drow][dcol][up] == 0:
+            pval = bval
+        for i in range (1,7):
+            imseq[top_corner + i] = pval
+        # bottom edge
+        pval = wval
+        if maze[drow][dcol][down] == 0:
+            pval = bval
+        for i in range (1,7):
+            imseq[top_corner +(7*width*8)+ i] = pval
+        # left edge
+        pval = wval
+        if maze[drow][dcol][left] == 0:
+            pval = bval
+        for i in range (1,7):
+            imseq[top_corner + (width * i*8)] = pval
+        # right edge
+        pval = wval    
+        if maze[drow][dcol][right] == 0:
+            pval = bval
+        for i in range (1,7):
+            imseq[top_corner + 7 + (i * width*8)] = pval
+
+
+def write_frame():
+    global imseq
+    global frame_num
+    im.putdata(imseq)
+    im.save(args.output_file+str(frame_num).zfill(6)+".png")
+    frame_num = frame_num + 1
 #current_square = random_square()
 #current_direction = random_direction()
-#print current_square[0]
-#print current_square[1]
-#print current_direction
-#print move(current_square[0], current_square[1], current_direction)
-#print move(1, 1, 0)
+ 
+
+#"/home/bill/Development/Python/maze/tf.png"
+wval = 255
+bval = 0
 
 # set up the black squares as unavailable
 seq = list(im.getdata())
-#print seq
+
+im=Image.new("1", (width*8, height*8))
+imseq = [255 for pixel in range (im.size[0]*im.size[1])]
+ 
 for row in range(height):
     for col in range(width):
         if seq[(row*width)+(col)] == 0:
             for info in range(6):
                 maze[row][col][info] = 1
-            #squares_blocked = squares_blocked + 1
+            draw_square(row,  col)
             
 #print "after blocking black pixels:"
 #print entered_count() 
@@ -222,41 +298,37 @@ for row in range(height):
         if seq[(row*width)+(col)] == 255: 
             if stuck(row, col) == 1:
                 maze[row][col][entered] = 1
-#print "after blocking isolated white pixels:"
+# after blocking isolated white pixels:
 squares_entered = entered_count()
-#print squares_entered
-#print maze
-#print squares_blocked,  height * width
+ 
 
 current_square = random_square(1)
 maze[current_square[0]][current_square[1]][entered] = 1
 while squares_entered < (height * width):
     
-    #print "new walk"
+    #new walk
     
     while stuck(current_square[0], current_square[1]) ==0 and maze[current_square[0]][current_square[1]][entered] == 1:
         current_direction = random_direction()
         while move_blocked(current_square[0], current_square[1], current_direction) == 1:
             current_direction = random_direction()
-        #print "row = %d, col = %d, direction = %d" % (current_square[0], current_square[1], current_direction)
-        
+         
         current_square = move(current_square[0], current_square[1], current_direction)
         #maze[current_square[0]][current_square[1]][entered] = 1
     squares_entered = entered_count()
     if squares_entered > (width*height):
         break
-    #print   (width*height) - squares_entered
     current_square = random_square(0)
     maze[current_square[0]][current_square[1]][entered] = 1  
 
    
 
-print "Calculated"
+print ("Calculated")
 
 # build the maze image
 #im=im.resize((im.size[0]*8,im.size[1]*8),Image.NEAREST)
-im=Image.new("1", (width*8, height*8))
-imseq = [255 for pixel in range (im.size[0]*im.size[1])]
+#im=Image.new("1", (width*8, height*8))
+#imseq = [255 for pixel in range (im.size[0]*im.size[1])]
 #"/home/bill/Development/Python/maze/tf.png"
 wval = 255
 bval = 0
@@ -308,10 +380,93 @@ for dot in sdata:
     imseq[dot[0]*width*8 + dot[1]] =bval
 # Finish Square
 #top_corner = (height*8*width)+ (width*8)
-for dot in fdata:
+for dot in fdata:   
     imseq[top_corner + dot[0]*width*8 + dot[1]] = bval
+# write the black and white maze
 im.putdata(imseq)
 im.save(args.output_file+".png")
+
+#convert to rgb and apply the original image on top
+orig_im = orig_im.resize((im.size[0]-48,im.size[1]-48),Image.BICUBIC)
+orig_im = ImageOps.expand(orig_im, border=24, fill=(255,255,255)) 
+orig_imseq_r = list(orig_im.getdata(0))
+orig_imseq_g = list(orig_im.getdata(1))
+orig_imseq_b = list(orig_im.getdata(2))
+maze_im = im.convert("RGB")
+maze_imseq_r = list(maze_im.getdata(0))
+maze_imseq_g = list(maze_im.getdata(1))
+maze_imseq_b = list(maze_im.getdata(2))
+for row in range (height):
+    for col in range (width):
+        top_corner = (row*64*width)+ (col*8)
+        if maze[row][col][blocked]== 1:
+            for brow in range (1,7):
+                for bcol in range (1,7):
+                    # fill in block body with color image data
+                    maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+            # get adjacent blockage info
+            blocked_up = False
+            blocked_right = False
+            blocked_down = False
+            blocked_left = False
+            if maze[row-1][col][blocked]== 1:
+                    blocked_up = True
+                    for brow in range(1):
+                        for bcol in range (1,7):
+                            maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                            maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                            maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+            if maze[row][col+1][blocked]== 1:
+                    blocked_right = True
+                    for brow in range(1,7):
+                        for bcol in range (7,8):
+                            maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                            maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                            maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+            if maze[row+1][col][blocked]== 1:
+                    blocked_down = True
+                    for brow in range(7,8):
+                        for bcol in range (1,7):
+                            maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                            maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                            maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+            if maze[row][col-1][blocked]== 1:
+                    blocked_left = True
+                    for brow in range(1,7):
+                        for bcol in range (1):
+                            maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                            maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                            maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+            # do the corners
+            if blocked_up and blocked_right:
+                    brow = 0
+                    bcol = 7
+                    maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+            if blocked_down and blocked_right:
+                    brow = 7
+                    bcol = 7
+                    maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+            if blocked_down and blocked_left:
+                    brow = 7
+                    bcol = 0
+                    maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+            if blocked_up and blocked_left:
+                    brow = 0
+                    bcol = 0
+                    maze_imseq_r[top_corner+(brow*width*8)+(bcol)] = orig_imseq_r[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)]
+                    maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)]
+maze_im.putdata(list(zip(maze_imseq_r, maze_imseq_g, maze_imseq_b)))
+maze_im.save(args.output_file+"_recolor.png")
+
 
 
 
@@ -394,63 +549,31 @@ while pass_thru_origin <= 1 and solved == 0:
         solved = 1
 
 if solved == 0:
-    print "No solution"
+    print ("No solution")
 else:
-    print "SOLVED!"
-    imseq = [255 for pixel in range (im.size[0]*im.size[1])]
+    print( "SOLVED!")
+    im = im.convert("RGB")
+    r_imseq = list(im.getdata(band=0))
+    g_imseq = list(im.getdata(band=1))
+    b_imseq = list(im.getdata(band=2))
     wval = 255
     bval = 0
+    im.save(args.output_file+"_rgb.png")
     for row in range (height):
         for col in range (width):
             top_corner = (row*64*width)+ (col*8)
-            if maze[row][col][blocked]== 1:
-                for brow in range (8):
-                    for bcol in range (8):
-                        imseq[top_corner+(brow*width*8)+(bcol)] = 0
-            else:
-                #top left corner
-                imseq[top_corner] = 0
-                #top right corner
-                imseq[top_corner + 7] = 0
-                #bottom left corner
-                imseq[top_corner+(7*width*8)] = 0
-                #bottom right corner
-                imseq[top_corner+(7*width*8)+7] = 0
-                # top edge
-                pval = wval
-                if maze[row][col][up] == 0:
-                    pval = bval
-                for i in range (1,7):
-                    imseq[top_corner + i] = pval
-                # bottom edge
-                pval = wval
-                if maze[row][col][down] == 0:
-                    pval = bval
-                for i in range (1,7):
-                    imseq[top_corner +(7*width*8)+ i] = pval
-                # left edge
-                pval = wval
-                if maze[row][col][left] == 0:
-                    pval = bval
-                for i in range (1,7):
-                    imseq[top_corner + (width * i*8)] = pval
-                # right edge
-                pval = wval    
-                if maze[row][col][right] == 0:
-                    pval = bval
-                for i in range (1,7):
-                    imseq[top_corner + 7 + (i * width*8)] = pval
-    im.convert("RGB")
-    for row in range (height):
-        for col in range (width):
-            top_corner = (row*64*width)+ (col*8)
+            # apply the solution dots
             if path[row][col] ==1:
                 for dot in fdata:
-                    imseq[top_corner + dot[0]*width*8 + dot[1]] = [255, 0, 0]
-    im.putdata(imseq)
+                    g_imseq[top_corner + dot[0]*width*8 + dot[1]] = 0 
+                    b_imseq[top_corner + dot[0]*width*8 + dot[1]] = 0 
+    #print(list(zip(r_imseq, g_imseq, b_imseq)))
+    im.putdata(list(zip(r_imseq, g_imseq, b_imseq)))
     im.save(args.output_file+"_solution.png")
+    #for i in range (1, 240):
+    #    write_frame()
 
 
-print "done"
+print ("done")
 
 
