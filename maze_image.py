@@ -77,13 +77,23 @@ if longest > max_dimension:
 # backup the original image
 orig_im = im
 #print(ImageStat.Stat(im).mean)
-# Analyze the overall brightness of the reduced black and white image - target is 170
+# Analyze the overall brightness of the reduced black and white image 
 tempim = im
 enhancer=ImageEnhance.Sharpness(tempim)
 tempim=enhancer.enhance(sharpness)
 bwtempim = tempim.convert("1")
 littletempim=bwtempim.resize((int(bwtempim.size[0]/factor),int(bwtempim.size[1]/factor)),Image.BICUBIC)
 overall_mean = ImageStat.Stat(littletempim).mean[0]
+print(overall_mean)
+# Decide whether to auto-invert 
+inverted = False
+if overall_mean < 128:
+    inverted = True
+    # invert the orginal image and the little temp image
+    littletempim = ImageOps.invert(littletempim)
+    orig_im = ImageOps.invert(orig_im)
+    tempim = ImageOps.invert(tempim)
+    overall_mean = ImageStat.Stat(littletempim).mean[0]
 # Adjust the brightness to the target
 while overall_mean < bright_target:
     enhancer=ImageEnhance.Brightness(tempim)
@@ -92,6 +102,8 @@ while overall_mean < bright_target:
     littletempim=bwtempim.resize((int(bwtempim.size[0]/factor),int(bwtempim.size[1]/factor)),Image.BICUBIC)
     overall_mean = ImageStat.Stat(littletempim).mean[0]
     print(overall_mean)
+
+
 # set the maze image
 im = littletempim
 # add a border
@@ -415,7 +427,7 @@ maze_imseq_b = list(maze_im.getdata(2))
 for row in range (3,height-3):
     for col in range (3,width-3):
         top_corner = (row*64*width)+ (col*8)
-        subl_factor = .5
+        subl_factor = .35
         if maze[row][col][blocked]== 1:
             subl_factor = 0
         for brow in range (1,7):
@@ -494,6 +506,8 @@ for row in range (3,height-3):
                 maze_imseq_g[top_corner+(brow*width*8)+(bcol)] = orig_imseq_g[top_corner+(brow*width*8)+(bcol)] + int((255-orig_imseq_g[top_corner+(brow*width*8)+(bcol)])*subl_factor)
                 maze_imseq_b[top_corner+(brow*width*8)+(bcol)] = orig_imseq_b[top_corner+(brow*width*8)+(bcol)] + int((255-orig_imseq_b[top_corner+(brow*width*8)+(bcol)])*subl_factor)
 maze_im.putdata(list(zip(maze_imseq_r, maze_imseq_g, maze_imseq_b)))
+if inverted == True:
+    maze_im = ImageOps.invert(maze_im)
 maze_im.save(args.output_file+"_recolor.png")
 
 
