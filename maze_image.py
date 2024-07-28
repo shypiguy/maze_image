@@ -25,10 +25,129 @@
 
 import random
 import sys
-from PIL import Image, ImageOps, ImageStat, ImageEnhance
+from PIL import Image, ImageOps, ImageStat, ImageEnhance, ImageChops
+import numpy as np
+import cv2
 
 sys.modules['Image'] = Image
 import argparse
+
+def point_in_box_oval (point_x, point_y, box_left, box_top, box_right, box_bottom):
+    answer = False
+    oval_b = (box_right-box_left)/2
+    oval_a = (box_bottom-box_top)/2
+    center_x = box_left + oval_b
+    center_y = box_top + oval_a
+    x_delta = point_x - center_x
+    y_delta = point_y - center_y
+    if x_delta ** 2/oval_b ** 2 + y_delta **2/oval_a ** 2< 1:
+        answer = True
+    return answer
+
+def blockfaces(image_in): # takes a color image in, outputs single channel with faces masked in black
+    # initialize the all white output image
+    blockfaces_out = Image.new("1", (image_in.size[0], image_in.size[1]), 255)
+    bfseq = [255 for pixel in range (blockfaces_out.size[0]*blockfaces_out.size[1])]
+    # convert the input image to open_cv RBG format
+    open_cv_image = np.array(image_in)  
+    open_cv_image = open_cv_image[:, :, ::-1].copy()
+    # detect the faces as box in face
+    gray_image = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2GRAY)
+    face_classifier = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    face = face_classifier.detectMultiScale(gray_image,  minNeighbors=16, minSize=(64, 64)) #scaleFactor=1.2,
+    for box in face:
+        # set new dimensions for face box (narrower, taller)
+        new_l = int(box[0]+box[2]*.1)
+        new_t = int(box[1]-box[3]*.1)
+        new_r = int(new_l+box[2]*.8)
+        new_b = int(new_t+box[3]*1.2)
+        facepic = image_in.crop((new_l, new_t, new_r, new_b))
+        # build the channel data for the face box
+        facepic_r = list(facepic.getdata(0))
+        facepic_g = list(facepic.getdata(1))
+        facepic_b = list(facepic.getdata(2))
+        #build hue histogram
+        hueset = {}
+        for row in range(facepic.size[1]):
+            for col in range(facepic.size[0]):
+                if point_in_box_oval (col, row, 0, 0, facepic.size[0], facepic.size[1]):
+                    face_pixel_address = row*facepic.size[0]+col
+                    rv = facepic_r[face_pixel_address]
+                    gv = facepic_g[face_pixel_address]
+                    bv = facepic_b[face_pixel_address]
+                    minv = min(rv,gv,bv)
+                    maxv = max(rv,gv,bv)
+                    hue = 0.0
+                    if maxv > minv:
+                        if rv == maxv:
+                            hue = (gv-bv)/(maxv-minv)
+                        if gv == maxv:
+                            hue = 2.0 + (bv-rv)/(maxv-minv)
+                        if bv == maxv:
+                            hue = 4.0 + (rv-gv)/(maxv-minv)
+                    hue = hue * 60
+                    if hue < 0:
+                        hue = hue + 360
+                    hue = round(hue)
+                    hueset[hue] = hueset.get(hue,  0) + 1
+        # find face hue range 
+        targetsum = .8*facepic.size[0]/2*facepic.size[1]/2*np.pi
+        peaksum = 0
+        peakhue = 0
+        peakvariance = 0
+        variance = 0
+        while peaksum < targetsum:
+            for basehue in range(360):
+                setsum = 0
+                for hue in range(basehue-variance,basehue+variance+1):
+                    if hue < 0:
+                        hue = hue+360
+                    if hue > 359:
+                        hue = hue-360
+                    setsum = setsum + hueset.get(hue,0)
+                if setsum > peaksum:
+                    peaksum = setsum
+                    peakhue = basehue
+                    peakvariance = variance
+            variance = variance + 1
+        print(peakhue, peakvariance, peaksum)
+        
+        # construct the faceskin image for this box
+        for row in range(facepic.size[1]):
+            for col in range(facepic.size[0]):
+                if point_in_box_oval (col, row, 0, 0, facepic.size[0], facepic.size[1]):
+                    face_pixel_address = row*facepic.size[0]+col
+                    image_pixel_address = (row+new_t)*blockfaces_out.size[0] + col + new_l 
+                    rv = facepic_r[face_pixel_address]
+                    gv = facepic_g[face_pixel_address]
+                    bv = facepic_b[face_pixel_address]
+                    minv = min(rv,gv,bv)
+                    maxv = max(rv,gv,bv)
+                    hue = 0.0
+                    if maxv > minv:
+                        if rv == maxv:
+                            hue = (gv-bv)/(maxv-minv)
+                        if gv == maxv:
+                            hue = 2.0 + (bv-rv)/(maxv-minv)
+                        if bv == maxv:
+                            hue = 4.0 + (rv-gv)/(maxv-minv)
+                    hue = hue * 60
+                    if hue < 0:
+                        hue = hue + 360
+                    hue = round(hue)
+                    huematch = 0
+                    for targethue in range (peakhue-peakvariance,peakhue+peakvariance+1):
+                        comparehue = targethue
+                        if comparehue > 359:
+                            comparehue = comparehue-360
+                        if comparehue < 0:
+                            comparehue = comparehue+360
+                        if hue == comparehue:
+                            huematch = 1
+                    if huematch == 1:
+                        bfseq[image_pixel_address] = 0
+    blockfaces_out.putdata(bfseq)
+    return blockfaces_out
 
 
 #Set up command line arguments
@@ -76,6 +195,11 @@ if longest > max_dimension:
 
 # backup the original image
 orig_im = im
+# get the face mask 
+maskim = blockfaces(orig_im)
+maskim.save(args.output_file+"_mask.png")
+maskim = maskim.resize((int(orig_im.size[0]/factor),int(orig_im.size[1]/factor)),Image.NEAREST)
+maskim.save(args.output_file+"_mask_small.png")
 #print(ImageStat.Stat(im).mean)
 # Analyze the overall brightness of the reduced black and white image 
 tempim = im
@@ -106,6 +230,11 @@ while overall_mean < bright_target:
 
 # set the maze image
 im = littletempim
+
+# superimpose the mask image on the maze image 
+im = ImageChops.darker(im, maskim)
+im.save(args.output_file+"_mask_comp.png")
+
 # add a border
 im = ImageOps.expand(im, border=3, fill=255) 
 
