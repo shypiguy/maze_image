@@ -54,7 +54,7 @@ def blockfaces(image_in): # takes a color image in, outputs single channel with 
     # detect the faces as box in face
     gray_image = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2GRAY)
     face_classifier = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-    face = face_classifier.detectMultiScale(gray_image,  minNeighbors=16, minSize=(64, 64)) #scaleFactor=1.2,
+    face = face_classifier.detectMultiScale(gray_image,  minNeighbors=16, minSize=(32, 32)) #scaleFactor=1.2,
     for box in face:
         # set new dimensions for face box (narrower, taller)
         new_l = int(box[0]+box[2]*.1)
@@ -91,7 +91,7 @@ def blockfaces(image_in): # takes a color image in, outputs single channel with 
                     hue = round(hue)
                     hueset[hue] = hueset.get(hue,  0) + 1
         # find face hue range 
-        targetsum = .8*facepic.size[0]/2*facepic.size[1]/2*np.pi
+        targetsum = .51*facepic.size[0]/2*facepic.size[1]/2*np.pi
         peaksum = 0
         peakhue = 0
         peakvariance = 0
@@ -110,6 +110,7 @@ def blockfaces(image_in): # takes a color image in, outputs single channel with 
                     peakhue = basehue
                     peakvariance = variance
             variance = variance + 1
+        variance = variance + 3
         print(peakhue, peakvariance, peaksum)
         
         # construct the faceskin image for this box
