@@ -687,7 +687,127 @@ def move_from(row,  col,  direction):
         path[frow][fcol] = abs(path[frow][fcol] -1) # switch the value of the square
         path[row][col] = path[frow][fcol] #set the original point to match
         return [frow, fcol]
+
+def move_from_simple(row,  col,  direction):
+    if can_go(row, col, direction) == 1:
+        fcol = col
+        frow= row
+        if direction == up:
+            frow = row-1
+        elif direction == down:
+            frow = row + 1
+        elif direction == right:
+            fcol = col +1
+        elif direction == left:
+            fcol = col - 1
+        return [frow, fcol]
+
+def not_solved(cell_in, direction_in):
+    answer = True
+    for direction in cell_in[3]:
+        if direction[0] == direction_in:
+            answer = False
+    return answer
+
+def cell_in_maze_map(cell_in, maze_map_in):
+    answer = False
+    for cell in maze_map_in:
+        if cell_in[0] == cell[0] and cell_in[1] == cell[1]:
+            answer = True
+    return answer
+
+def opposite_direction(direction_in):
+    if direction_in == down:
+        answer = up
+    elif direction_in == left:
+        answer = right
+    elif direction_in == up:
+        answer = down
+    elif direction_in == right:
+        answer = left
+    return answer
         
+# Build the network of destinations and intersections
+# destination is a cell with only one way out
+# intersection is a cell with 3 or 4 ways out
+# anything else is a hallway
+
+# define maze map data structure
+cell_type = 0 # first data element
+hallway = 0       # cell type value
+destination = 1   # cell type value
+intersection = 2  # cell type value
+neighbor = 1  # second data element
+distance = 2  #third data element
+cell_type = [[-1 for row in range(width)] for col in range(height)]
+
+# step 1 identify cell types:
+for row in range(height):
+    for col in range(width):
+        if maze[row][col][blocked]==0:
+            dir_sum = 0
+            for direction in range(4):
+                dir_sum = dir_sum + maze[row][col][direction]
+            if dir_sum >= 3:
+                cell_type[row][col]=intersection
+            elif dir_sum == 1:
+                cell_type[row][col]=destination
+            else:
+                cell_type[row][col]=hallway
+# step 2 reduce map
+row_element = 0
+col_element = 1
+type_element = 2
+neighbors = 3
+maze_map = []
+for row in range(height):
+    for col in range(width):
+        if cell_type[row][col] == destination or cell_type[row][col] == intersection:
+            maze_map += [[row, col, cell_type[row][col], []]]
+print(maze_map)    #debug step
+solved_maze_map = []
+for cell in maze_map:
+    start_row = cell[row_element]
+    start_col = cell[col_element]
+    if cell[type_element] == destination:
+        neighbor_count = 1 
+    elif cell[type_element] == intersection:
+        neighbor_count = 3 
+    while len(cell[neighbors]) < neighbor_count:
+        cum_distance = 0
+        neighbor_found = False
+        # pick a direction not listed in neighbors
+        start_direction = 5
+        for try_direction in range(4):
+           if can_go(start_row, start_col, try_direction) == 1:
+                if try_direction < start_direction and not_solved(cell, try_direction) == True:
+                    start_direction = try_direction
+        next_direction = start_direction
+        this_cell = [cell[row_element], cell[col_element]]
+        while neighbor_found == False:
+            cum_distance = cum_distance + 1                   
+            next_cell = move_from_simple(this_cell[0], this_cell[1], next_direction)
+            if cell_in_maze_map(next_cell, maze_map) == True:
+                neighbor_found = True
+                cell[neighbors] += [[start_direction, next_cell[0], next_cell[1], cum_distance]]
+            else:
+                this_cell = next_cell
+                if can_go(this_cell[0],  this_cell[1],  whats_left(next_direction)) ==1:
+                    next_direction = whats_left(next_direction)
+                else:
+                    while can_go(this_cell[0],  this_cell[1],  next_direction) ==0:
+                        next_direction = whats_right(next_direction)
+    solved_maze_map += cell
+print(solved_maze_map)    #debug step
+                
+                
+    
+        
+                
+            
+
+
+
 # start solving
 pass_thru_origin = 0
 
