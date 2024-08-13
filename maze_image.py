@@ -764,7 +764,7 @@ for row in range(height):
     for col in range(width):
         if cell_type[row][col] == destination or cell_type[row][col] == intersection:
             maze_map += [[row, col, cell_type[row][col], []]]
-print(maze_map)    #debug step
+#print(maze_map)    #debug step
 solved_maze_map = []
 for cell in maze_map:
     start_row = cell[row_element]
@@ -797,9 +797,46 @@ for cell in maze_map:
                 else:
                     while can_go(this_cell[0],  this_cell[1],  next_direction) ==0:
                         next_direction = whats_right(next_direction)
-    solved_maze_map += cell
-print(solved_maze_map)    #debug step
-                
+    solved_maze_map += [cell]
+#print(solved_maze_map)    #debug step
+
+# step through the map to build a sorted list of the longest paths
+distance_list = []
+for cell in solved_maze_map:
+    if cell[2] == 1 and (cell[0] == 0 or cell[0] == height-1 or cell[1] == 0 or cell[1] == width-1): # dead end on an edge
+        start_point = [cell[0], cell[1], [[cell[3][0][1],cell[3][0][2],cell[3][0][3]]]]
+        #print(start_point)
+        current_node = 0
+        while len(start_point[2]) > current_node:
+            this_point = start_point[2][current_node]
+            for node in solved_maze_map:
+                if node[0] == this_point[0] and node[1] == this_point[1]:
+                    for next_node in node[3]:
+                        next_node_found = False
+                        for point in start_point[2]:
+                            if next_node[1] == point[0] and next_node[2] == point[1]:
+                                next_node_found = True
+                        if next_node_found == False:
+                            start_point[2] += [[next_node[1], next_node[2], next_node[3] + this_point[2]]]
+            current_node = current_node + 1
+        distance_list += [start_point]    
+#print(distance_list)
+
+#step throught the distance list to find the longest path
+long_start_row = 0
+long_start_col = 0
+long_end_row = height - 1
+long_end_col = width - 1
+max_dist = 0
+for start_point in distance_list:
+    for end_point in start_point[2]:
+        if (end_point[0] == 0 or end_point[0] == height-1 or end_point[1] == 0 or end_point[1] == width - 1) and end_point[2] > max_dist:
+            long_start_row = start_point[0]
+            long_start_col = start_point[1]
+            long_end_row = end_point[0]
+            long_end_col = end_point[1]
+            max_dist = end_point[2]
+        
                 
     
         
@@ -817,8 +854,8 @@ if  maze[0][0][blocked] ==1 or maze[height-1][width-1][blocked] == 1:
 
 solved = 0
 path=[[0 for row in range(width)] for col in range(height)]
-cur_row = 0
-cur_col = 0
+cur_row = long_start_row
+cur_col = long_start_col
 cur_dir = right
 new_point = []
 
@@ -826,7 +863,7 @@ if maze[cur_row][cur_col][cur_dir] == 0:
     cur_dir = down
     
 
-while pass_thru_origin <= 1 and solved == 0:
+while  solved == 0: # pass_thru_origin <= 1 and
     
     if can_go(cur_row,  cur_col,  whats_left(cur_dir)) ==1:
         cur_dir = whats_left(cur_dir)
@@ -838,7 +875,7 @@ while pass_thru_origin <= 1 and solved == 0:
     cur_col = new_point[1]
     if cur_col ==0 and cur_dir ==0:
         pass_thru_origin = pass_thru_origin + 1
-    if cur_col == width -1 and cur_row == height -1:
+    if cur_col == long_end_col and cur_row == long_end_row:
         solved = 1
 
 if solved == 0:
