@@ -28,6 +28,7 @@ import sys
 from PIL import Image, ImageOps, ImageStat, ImageEnhance, ImageChops
 import numpy as np
 import cv2
+import json
 
 sys.modules['Image'] = Image
 import argparse
@@ -906,4 +907,33 @@ else:
 
 print ("done")
 
+# build the maze data file
+mdf = {}
+mdf.update({"jsonType":"maze_image"})
+mdf.update({"version":"0.0.1"})
+mdf.update({"description":"no description given"})
+mdf.update({"metaData":"no medatadata given"})
+mdf.update({"name":args.output_file})
+mdf.update({"width":width})
+mdf.update({"height":height})
+mdf.update({"originalImage":args.input_file})
+mdf.update({"gameImage":args.output_file+".png"})
+cells_out = []
+for row in range(width):
+    for col in range(height):
+        cell_value = 0
+        if maze[row][col][blocked] == 0:
+            for direction in range(4):
+                if maze[row][col][direction] == 1:
+                    cell_value = cell_value + 2**direction
+        if path[row][col] == 1:
+            cell_value = cell_value + 16
+        if row == long_start_row and col == long_start_col:
+            cell_value = cell_value + 32
+        if row == long_end_row and col == long_end_col:
+            cell_value = cell_value + 64
+        cells_out.append(cell_value)
+mdf.update({"cells":cells_out})
+with open(args.output_file+"_data.json", "w") as f:
+    f.write(json.dumps(mdf))
 
