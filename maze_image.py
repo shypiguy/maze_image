@@ -917,10 +917,10 @@ mdf.update({"name":args.output_file})
 mdf.update({"width":width})
 mdf.update({"height":height})
 mdf.update({"originalImage":args.input_file})
-mdf.update({"gameImage":args.output_file+".png"})
+mdf.update({"gameImage":args.output_file+"_recolor.png"})
 cells_out = []
-for row in range(width):
-    for col in range(height):
+for row in range(height):
+    for col in range(width):
         cell_value = 0
         if maze[row][col][blocked] == 0:
             for direction in range(4):
