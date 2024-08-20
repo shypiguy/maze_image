@@ -9,7 +9,7 @@ pygame.init()
 BACKGROUND = (0, 0, 0)
  
 # Game Setup
-FPS = 7
+FPS = 30
 fpsClock = pygame.time.Clock()
 WINDOW_WIDTH = 640
 WINDOW_HEIGHT = 480
@@ -75,11 +75,13 @@ def maze_pos (player_row, player_col):
 def main () :
     global player_row
     global player_col
-    global player_cell_data
     looping = True
   
     # The main game loop
     while looping :
+        moved = False
+        new_player_row = player_row
+        new_player_col = player_col
         # Get inputs
         for event in pygame.event.get() :
             if event.type == QUIT :
@@ -89,26 +91,47 @@ def main () :
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_UP:
                 if player_cell_data & cango_up == cango_up:
-                    player_row = player_row - 1
+                    new_player_row = player_row - 1
+                    moved = True
             elif event.key == pygame.K_RIGHT:
                 if player_cell_data & cango_right == cango_right:
-                    player_col = player_col + 1
+                    new_player_col = player_col + 1
+                    moved = True
             elif event.key == pygame.K_DOWN:
                 if player_cell_data & cango_down == cango_down:
-                    player_row = player_row + 1
+                    new_player_row = player_row + 1
+                    moved = True
             elif event.key == pygame.K_LEFT:
                 if player_cell_data & cango_left == cango_left:
-                   player_col = player_col - 1
+                    new_player_col = player_col - 1
+                    moved = True
    
         # Processing
-        # This section will be built out later
-        player_cell_data = cells[player_row*maze_width + player_col]
+
+        # transition animation
+        if moved == True:
+            old_pos = maze_pos(player_row, player_col)
+            new_pos = maze_pos(new_player_row, new_player_col)
+            for step in range (8):
+                interim_pos = (old_pos[0] + (new_pos[0]-old_pos[0])/8*(step+1),old_pos[1] + (new_pos[1]-old_pos[1])/8*(step+1))
+                WINDOW.fill(BACKGROUND)
+                WINDOW.blit(maze_image, interim_pos)
+                pygame.draw.circle(WINDOW, me_color, (320,240), 3)
+                pygame.display.update()
+                fpsClock.tick(FPS)
+
+            player_row = new_player_row
+            player_col = new_player_col
+
+        player_cell_data = cells[new_player_row*maze_width + new_player_col]
         if player_cell_data & on_path == on_path:
             me_color = (0,0,255)
         else:
             me_color = (255,0,0)
         if player_cell_data & cell_end == cell_end:
             me_color = (0,255,0)
+            
+
         # Render elements of the game
         WINDOW.fill(BACKGROUND)
         WINDOW.blit(maze_image, maze_pos(player_row, player_col))
