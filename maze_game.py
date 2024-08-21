@@ -13,6 +13,11 @@ FPS = 30
 fpsClock = pygame.time.Clock()
 WINDOW_WIDTH = 640
 WINDOW_HEIGHT = 480
+ZOOM = 4.0
+ZOOM_MIN = .5
+ZOOM_MAX = 8.0
+ZOOM_FACTOR = 1.075
+
  
 WINDOW = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption('Maze Game!')
@@ -28,8 +33,8 @@ maze_data = json.loads(f.read())
 
 # Load maze image
 image_file_loaction = maze_data['gameImage']
-maze_image = pygame.image.load(image_file_loaction)
-maze_image = pygame.transform.scale_by(maze_image, 4)
+o_maze_image = pygame.image.load(image_file_loaction)
+maze_image = pygame.transform.scale_by(o_maze_image, ZOOM)
 
 # Load maze structure data
 cells = maze_data['cells']
@@ -61,10 +66,10 @@ for row in range(maze_height):
 
 # function to identify poistion of maze
 def maze_pos (player_row, player_col):
-    # cells are 4*8 wide, 4*8 tall, (16,16) is their center
+    # cells are ZOOM*8 wide, ZOOM*8 tall, (zoom*8/2,zoom*8/2) is their center
     # screen is 640 by 480, center is 320,240
-    new_x = player_col*32+16
-    new_y = player_row*32+16
+    new_x = player_col*(ZOOM*8)+(ZOOM*8/2)
+    new_y = player_row*(ZOOM*8)+(ZOOM*8/2)
     new_origin = (-1*new_x+320, -1*new_y+240)
     return new_origin
     
@@ -75,6 +80,8 @@ def maze_pos (player_row, player_col):
 def main () :
     global player_row
     global player_col
+    global ZOOM
+    global maze_image
     looping = True
   
     # The main game loop
@@ -87,6 +94,13 @@ def main () :
             if event.type == QUIT :
                 pygame.quit()
                 sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_PERIOD:
+                    if ZOOM < ZOOM_MAX:
+                        ZOOM = ZOOM*ZOOM_FACTOR
+                elif event.key == pygame.K_COMMA:
+                    if ZOOM > ZOOM_MIN:
+                        ZOOM = ZOOM/ZOOM_FACTOR
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_UP:
@@ -105,6 +119,7 @@ def main () :
                 if player_cell_data & cango_left == cango_left:
                     new_player_col = player_col - 1
                     moved = True
+                
    
         # Processing
 
@@ -124,6 +139,7 @@ def main () :
             player_col = new_player_col
 
         player_cell_data = cells[new_player_row*maze_width + new_player_col]
+        maze_image = pygame.transform.scale_by(o_maze_image, ZOOM)        
         if player_cell_data & on_path == on_path:
             me_color = (0,0,255)
         else:
