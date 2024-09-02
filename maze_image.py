@@ -535,12 +535,12 @@ for row in range (height):
 sdata = [(2, 2), (3, 3), (3, 5), (4, 4), (4, 5), (5, 3), (5, 4), (5, 5)]
 fdata = [(2, 3), (2,4), (2, 4), (3, 2),(3,3), (3, 4), (3, 5), (4, 2),(4, 3), (4, 4),  (4, 5),  (5, 3),  (5, 4)]
 # Start Square
-for dot in sdata:
-    imseq[dot[0]*width*8 + dot[1]] =bval
+#for dot in sdata:
+#    imseq[dot[0]*width*8 + dot[1]] =bval
 # Finish Square
 #top_corner = (height*8*width)+ (width*8)
-for dot in fdata:   
-    imseq[top_corner + dot[0]*width*8 + dot[1]] = bval
+#for dot in fdata:   
+#    imseq[top_corner + dot[0]*width*8 + dot[1]] = bval
 # write the black and white maze
 im.putdata(imseq)
 im.save(args.output_file+".png")
