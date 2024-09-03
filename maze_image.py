@@ -650,6 +650,9 @@ for row in range (height):  #trying
 maze_im.putdata(list(zip(maze_imseq_r, maze_imseq_g, maze_imseq_b)))
 if inverted == True:
     maze_im = ImageOps.invert(maze_im)
+    maze_imseq_r = list(maze_im.getdata(0))
+    maze_imseq_g = list(maze_im.getdata(1))
+    maze_imseq_b = list(maze_im.getdata(2))
 maze_im.save(args.output_file+"_recolor.png")
 alpha_maze_im = Image.new("RGBA", (maze_im.width, maze_im.height))
 alpha_maze_im.putdata(list(zip(maze_imseq_r, maze_imseq_g, maze_imseq_b, maze_imseq_a)))
