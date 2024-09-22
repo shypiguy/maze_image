@@ -924,6 +924,27 @@ else:
 
 print ("done")
 
+# cut and size the background images
+# data to work with: width, height, alpha_maze_im, long_end_row, long_end_col
+# what is the pixel location of the center of the circles?
+ccx = long_end_col*8 + 4
+ccy = long_end_row*8 + 4
+
+# assuming no scaling...
+# top of crop box is
+crop_top = 2000 - ccy
+crop_left = 2000 - ccx
+crop_bottom  = crop_top + height*8
+crop_right = crop_left + width*8
+
+for index in range(5):
+    file_index = index + 1
+    circ_img = Image.open("./src/circles" + str(file_index) + ".png")
+    circ_img = circ_img.crop((crop_left, crop_top, crop_right, crop_bottom))
+    circ_img.save(args.output_file+"_bg"+str(file_index)+".png")
+
+
+
 # build the maze data file
 mdf = {}
 mdf.update({"jsonType":"maze_image"})
