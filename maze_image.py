@@ -937,7 +937,7 @@ crop_left = 2000 - ccx
 crop_bottom  = crop_top + height*8
 crop_right = crop_left + width*8
 
-for index in range(5):
+for index in range(8):
     file_index = index + 1
     circ_img = Image.open("./src/circles" + str(file_index) + ".png")
     circ_img = circ_img.crop((crop_left, crop_top, crop_right, crop_bottom))
@@ -956,6 +956,11 @@ mdf.update({"width":width})
 mdf.update({"height":height})
 mdf.update({"originalImage":args.input_file})
 mdf.update({"gameImage":args.output_file+"_alpha.png"})
+bg_images = []
+for index in range(8):
+    file_index = index + 1
+    bg_images.append(args.output_file+"_bg"+str(file_index)+".png")    
+mdf.update({"backgroundImages":bg_images})
 cells_out = []
 for row in range(height):
     for col in range(width):
