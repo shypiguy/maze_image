@@ -19,56 +19,6 @@ ZOOM_MIN = .75
 ZOOM_MAX = 8.0
 ZOOM_FACTOR = 1.075
 
- 
-WINDOW = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-pygame.display.set_caption('Maze Game!')
-
-#Set up spiral surface
-#o_spiral = pygame.image.load('out/circles1.png')
-#o_spiral = pygame.transform.scale_by(o_spiral, .5)
-#print(o_spiral.get_size())
-#spiral_surface = pygame.transform.scale_by(o_spiral, ZOOM)
-#spiral_size = spiral_surface.get_size()
-#print(spiral_size)
-
-#Set up command line arguments
-parser = argparse.ArgumentParser()
-parser.add_argument("input_file",  help="the maze file to be played")
-args=parser.parse_args()
-
-# Load maze data
-f = open (args.input_file, "r")
-maze_data = json.loads(f.read())
-
-# Load maze image
-image_file_location = maze_data['gameImage']
-o_maze_image = pygame.image.load(image_file_location).convert_alpha()
-maze_image = pygame.transform.scale_by(o_maze_image, ZOOM)
-maze_size = maze_image.get_size()
-print(maze_size)
-maze_surface = pygame.Surface(maze_size)
-maze_surface.fill((0,255,255))
-maze_surface.blit(maze_image, (0,0))
-
-# Load list of background images
-bg_images = []
-bg_image_locations = maze_data['backgroundImages']
-o_bg_images = [pygame.image.load(f'{i}') for i in bg_image_locations]
-bg_images = [pygame.image.load(f'{i}') for i in bg_image_locations]
-for i in range(len(bg_images)):
-    bg_images[i] = pygame.transform.scale_by(o_bg_images[i], ZOOM)
-#for bg_location in bg_image_locations:
-#    bg_image = pygame.image.load(bg_location)
-#    bg_images.append(bg_image)
-#bg_surface = pygame.Surface(bg_images[0].get_size())
-#bg_surface.fill((0,255,255))
-#bg_surface.blit(bg_images[0], (0,0))
-
-# Load maze structure data
-cells = maze_data['cells']
-maze_width = maze_data['width']
-maze_height = maze_data['height']
-
 # Maze data constants
 cell_blocked = 0
 cango_up = 1
@@ -86,6 +36,23 @@ end_row = 0
 end_col = 0
 player_cell_data = 0
 bg_index = 0
+ 
+WINDOW = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+pygame.display.set_caption('Maze Game!')
+
+#Set up command line arguments
+parser = argparse.ArgumentParser()
+parser.add_argument("input_file",  help="the maze file to be played")
+args=parser.parse_args()
+
+# Load maze data
+f = open (args.input_file, "r")
+maze_data = json.loads(f.read())
+
+# Load maze structure data
+cells = maze_data['cells']
+maze_width = maze_data['width']
+maze_height = maze_data['height']
 
 # Find maze start and end row and column
 for row in range(maze_height):
@@ -98,6 +65,26 @@ for row in range(maze_height):
             end_row = row
             end_col = col
             print((end_row, end_col))
+
+# Load maze image
+image_file_location = maze_data['gameImage']
+o_maze_image = pygame.image.load(image_file_location).convert_alpha()
+# Draw the target bullseye
+pygame.draw.circle(o_maze_image, (255,0,0), (end_col*8+4,end_row*8+4), 3)
+pygame.draw.circle(o_maze_image, (255,255,255), (end_col*8+4,end_row*8+4), 2)
+pygame.draw.circle(o_maze_image, (255,0,0), (end_col*8+4,end_row*8+4), 1)
+
+maze_image = pygame.transform.scale_by(o_maze_image, ZOOM)
+maze_size = maze_image.get_size()
+
+# Load list of background images
+bg_images = []
+bg_image_locations = maze_data['backgroundImages']
+o_bg_images = [pygame.image.load(f'{i}') for i in bg_image_locations]
+bg_images = [pygame.image.load(f'{i}') for i in bg_image_locations]
+for i in range(len(bg_images)):
+    bg_images[i] = pygame.transform.scale_by(o_bg_images[i], ZOOM)
+
 
 # function to identify poistion of maze
 def maze_pos (player_row, player_col):
@@ -127,8 +114,6 @@ def spiral_pos (player_row, player_col, spiral_size):
     # Physical center y value should be y= 636, but image is only 1260 tall
     # need to subtract (shift up 6 pixels of 1260 = 
     
-    s_w = spiral_size[0]
-    s_h = spiral_size[1]
     maze_origin = maze_pos(player_row, player_col)
     m_x = maze_origin[0]
     m_y = maze_origin[1]
@@ -156,7 +141,6 @@ def screen_paint (origin, player_color):
     pygame.draw.circle(WINDOW, player_color, (320,240), 3)
     # update the screen
     pygame.display.update()
-    #print("screen painted"+str(bg_index)+ " " + str(origin))
     
 
 # The main function that controls the game
@@ -177,17 +161,6 @@ def main () :
     
     # The main game loop
     while looping :
-        #spiral_angle = spiral_angle + spiral_step
-        #if spiral_angle > 360:
-        #    spiral_angle = spiral_angle - 360
-            
-        #if lum_dir == 5:
-        #    if lum == 255:
-        #        lum_dir = -5
-        #else:
-        #    if lum == 0:
-        #        lum_dir = 5
-        #lum = lum + lum_dir
         moved = False
         zoomed = False
         new_player_row = player_row
@@ -232,8 +205,6 @@ def main () :
         if moved == True:
             old_pos = maze_pos(player_row, player_col)
             new_pos = maze_pos(new_player_row, new_player_col)
-            #old_spiral_pos = spiral_pos(player_row, player_col, spiral_surface.get_size())
-            #new_spiral_pos = spiral_pos(new_player_row, new_player_col, spiral_surface.get_size())
             for step in range (8):
                 interim_pos = (old_pos[0] + (new_pos[0]-old_pos[0])/8*(step+1),old_pos[1] + (new_pos[1]-old_pos[1])/8*(step+1))
                 screen_paint(interim_pos, me_color)
@@ -247,7 +218,6 @@ def main () :
             maze_image = pygame.transform.scale_by(o_maze_image, ZOOM)
             for i in range(len(bg_images)):
                 bg_images[i] = pygame.transform.scale_by(o_bg_images[i], ZOOM)
-        #bg_surface = pygame.transform.scale_by(bg_images[0], ZOOM)
         if player_cell_data & on_path == on_path:
             me_color = (0,0,255)
         else:
@@ -258,20 +228,6 @@ def main () :
 
         # Render elements of the game
         new_origin = maze_pos (player_row, player_col)
-        #screen_paint(new_origin, me_color)
-        #WINDOW.fill((0,0,0)) # black background
-        # pick the next bg_images item to blit
-        #bg_surface.blit(bg_images[bg_index], (0,0))
-        #WINDOW.blit(bg_surface, new_origin)
-        #increment the bg_indedx
-        #bg_index = bg_index + 1
-        #if bg_index >= len(bg_images):
-        #    bg_index = 0
-        # blit the maze
-        #WINDOW.blit(maze_surface, new_origin)
-        # blit the player dot
-        #pygame.draw.circle(WINDOW, me_color, (320,240), 3)
-        # update the screen
         screen_paint(new_origin, me_color)
         pygame.display.update()
         fpsClock.tick(FPS)
