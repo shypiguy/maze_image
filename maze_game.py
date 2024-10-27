@@ -65,7 +65,7 @@ for row in range(maze_height):
             end_row = row
             end_col = col
             print((end_row, end_col))
-
+            
 # Load maze image
 image_file_location = maze_data['gameImage']
 o_maze_image = pygame.image.load(image_file_location).convert_alpha()
@@ -85,6 +85,57 @@ bg_images = [pygame.image.load(f'{i}') for i in bg_image_locations]
 for i in range(len(bg_images)):
     bg_images[i] = pygame.transform.scale_by(o_bg_images[i], ZOOM)
 
+# function to determine if a cell is "cruisable" (has exactly 2 exits)
+def is_cruise (cell_row, cell_col):
+    exit_count = 0
+    is_it = False
+    cell = cells[cell_row*maze_width + cell_col]
+    if cell & cango_up == cango_up:
+        exit_count = exit_count + 1
+    if cell & cango_down == cango_down:
+        exit_count = exit_count + 1
+    if cell & cango_right == cango_right:
+        exit_count = exit_count + 1
+    if cell & cango_left == cango_left:
+        exit_count = exit_count + 1
+    if exit_count == 2:
+        is_it = True
+    return is_it
+
+# function to identify the next cruisable cell
+def next_cell (cell_row, cell_col, from_row, from_col):
+    if is_cruise(cell_row, cell_col):
+        directions = cells[cell_row*maze_width + cell_col]
+        #get rid of non-directional markers
+        if directions & on_path == on_path:
+            directions = directions - on_path
+        if directions & cell_start == cell_start:
+            directions = directions - cell_start
+        if directions & cell_end == cell_end:
+            directions = directions - cell_end
+        #get rid of reverse direction
+        if from_row > cell_row:
+            directions = directions - cango_down
+        if from_row < cell_row:
+            directions = directions - cango_up
+        if from_col > cell_col:
+            directions = directions - cango_right
+        if from_col < cell_col:
+            directions = directions - cango_left
+        # identify next cell
+        next_row = cell_row
+        next_col = cell_col
+        if directions & cango_down == cango_down:
+            next_row = cell_row + 1
+        if directions & cango_up == cango_up:
+            next_row = cell_row - 1
+        if directions & cango_right == cango_right:
+            next_col = cell_col + 1
+        if directions & cango_left == cango_left:
+            next_col = cell_col - 1
+        return [next_row, next_col]
+    else:
+        return [cell_row, cell_col]
 
 # function to identify poistion of maze
 def maze_pos (player_row, player_col):
@@ -203,12 +254,26 @@ def main () :
 
         # transition animation
         if moved == True:
+            cruise = True
             old_pos = maze_pos(player_row, player_col)
             new_pos = maze_pos(new_player_row, new_player_col)
-            for step in range (8):
-                interim_pos = (old_pos[0] + (new_pos[0]-old_pos[0])/8*(step+1),old_pos[1] + (new_pos[1]-old_pos[1])/8*(step+1))
-                screen_paint(interim_pos, me_color)
-                fpsClock.tick(FPS)
+            while cruise:
+                # smoothly move to next cell
+                for step in range (8):
+                    interim_pos = (old_pos[0] + (new_pos[0]-old_pos[0])/8*(step+1),old_pos[1] + (new_pos[1]-old_pos[1])/8*(step+1))
+                    screen_paint(interim_pos, me_color)
+                    fpsClock.tick(FPS)
+                cruise_cell = next_cell(new_player_row, new_player_col, player_row, player_col)
+                if cruise_cell[0] == new_player_row and cruise_cell[1] == new_player_col:
+                    cruise = False
+                else:
+                    player_row = new_player_row
+                    player_col = new_player_col
+                    new_player_row = cruise_cell[0]
+                    new_player_col = cruise_cell[1]
+                    old_pos = maze_pos(player_row, player_col)
+                    new_pos = maze_pos(new_player_row, new_player_col)
+                    
 
             player_row = new_player_row
             player_col = new_player_col
