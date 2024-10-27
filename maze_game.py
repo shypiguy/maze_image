@@ -53,6 +53,7 @@ maze_data = json.loads(f.read())
 cells = maze_data['cells']
 maze_width = maze_data['width']
 maze_height = maze_data['height']
+been_there = [0] * maze_width * maze_height
 
 # Find maze start and end row and column
 for row in range(maze_height):
@@ -61,6 +62,8 @@ for row in range(maze_height):
             player_row = row
             player_col = col
             player_cell_data = cells[row*maze_width + col]
+            # maybe let this happen naturally?
+            been_there[row*maze_width + col] = 1
         if cells[row*maze_width + col] & cell_end == cell_end:
             end_row = row
             end_col = col
@@ -137,6 +140,19 @@ def next_cell (cell_row, cell_col, from_row, from_col):
     else:
         return [cell_row, cell_col]
 
+# procedure to leave a breadcrumb
+def breadcrumb (cell_row, cell_col):
+    global been_there
+    global maze_image
+    # pick color
+    if cells[cell_row*maze_width + cell_col] & on_path == on_path:
+        crumb_color = (255,255,0) #yellow
+    else:
+        crumb_color = (255,0,0) #red
+    pygame.draw.circle(o_maze_image, crumb_color, (cell_col*8+4,cell_row*8+4), 2)
+    #maze_image = pygame.transform.scale_by(o_maze_image, ZOOM)
+    been_there[cell_row*maze_width + cell_col] = 1
+
 # function to identify poistion of maze
 def maze_pos (player_row, player_col):
     # cells are ZOOM*8 wide, ZOOM*8 tall, (zoom*8/2,zoom*8/2) is their center
@@ -144,34 +160,8 @@ def maze_pos (player_row, player_col):
     new_x = player_col*(ZOOM*8)+(ZOOM*8/2)
     new_y = player_row*(ZOOM*8)+(ZOOM*8/2)
     new_origin = (-1*new_x+320, -1*new_y+240)
-    return new_origin
-
-# function to identify poistion of spiral
-def spiral_pos (player_row, player_col, spiral_size):
-    # cells are ZOOM*8 wide, ZOOM*8 tall, (zoom*8/2,zoom*8/2) is their center
-    # screen is 640 by 480, center is 320,240
-
-    # spiral has variable width (because it will rotate)
-    # it's center needs to be calculated relative to
-    # the maze_surface origin
-
-    # s_w is width of the spiral image
-    # s_h is height of the spiral image
-    # m_x is x coord of maze top left
-    # m_y is y coord of maze top left
-    # end_row is cell row where spiral should be centered
-    # end_col is cell col where spiral should be centered
-    # new_x = m_x - s_w/2 + (end_row*(ZOOM*8)+(ZOOM*4))
-    # Physical center y value should be y= 636, but image is only 1260 tall
-    # need to subtract (shift up 6 pixels of 1260 = 
-    
-    maze_origin = maze_pos(player_row, player_col)
-    m_x = maze_origin[0]
-    m_y = maze_origin[1]
-
-    new_x = m_x - s_w/2 + (end_col*(ZOOM*8)+(ZOOM*4))
-    new_y = m_y - s_h/2 + (end_row*(ZOOM*8)+(ZOOM*4))
-    new_origin = (new_x, new_y)
+    if been_there[player_row*maze_width + player_col] == 0:
+        breadcrumb(player_row, player_col)
     return new_origin
 
 # Function to render the screen
@@ -263,6 +253,7 @@ def main () :
                     interim_pos = (old_pos[0] + (new_pos[0]-old_pos[0])/8*(step+1),old_pos[1] + (new_pos[1]-old_pos[1])/8*(step+1))
                     screen_paint(interim_pos, me_color)
                     fpsClock.tick(FPS)
+                maze_image = pygame.transform.scale_by(o_maze_image, ZOOM)
                 cruise_cell = next_cell(new_player_row, new_player_col, player_row, player_col)
                 if cruise_cell[0] == new_player_row and cruise_cell[1] == new_player_col:
                     cruise = False
