@@ -12,8 +12,8 @@ BACKGROUND = (255, 255, 0)
 # Game Setup
 FPS = 30
 fpsClock = pygame.time.Clock()
-WINDOW_WIDTH = 640
-WINDOW_HEIGHT = 480
+WINDOW_WIDTH = 1280
+WINDOW_HEIGHT = 960
 ZOOM = 4.0
 ZOOM_MIN = .75
 ZOOM_MAX = 8.0
@@ -159,7 +159,7 @@ def maze_pos (player_row, player_col):
     # screen is 640 by 480, center is 320,240
     new_x = player_col*(ZOOM*8)+(ZOOM*8/2)
     new_y = player_row*(ZOOM*8)+(ZOOM*8/2)
-    new_origin = (-1*new_x+320, -1*new_y+240)
+    new_origin = (-1*new_x+(WINDOW_WIDTH/2), -1*new_y+(WINDOW_HEIGHT/2))
     if been_there[player_row*maze_width + player_col] == 0:
         breadcrumb(player_row, player_col)
     return new_origin
@@ -179,7 +179,7 @@ def screen_paint (origin, player_color):
     # blit the maze
     WINDOW.blit(maze_image, origin)
     # blit the player dot
-    pygame.draw.circle(WINDOW, player_color, (320,240), 3)
+    pygame.draw.circle(WINDOW, player_color, (WINDOW_WIDTH/2,WINDOW_HEIGHT/2), 3)
     # update the screen
     pygame.display.update()
     
