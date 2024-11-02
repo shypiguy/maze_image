@@ -180,7 +180,7 @@ else:
 if args.bright_target:
     bright_target = args.bright_target
 else:
-    bright_target = 128    
+    bright_target = 224    
 
 im = Image.open(args.input_file)
 
