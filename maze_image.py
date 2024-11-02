@@ -159,6 +159,7 @@ parser.add_argument("output_file",  help="destination for the maze graphic file"
 parser.add_argument("--max_dimension", help="specify the max (width or height) of the output maze, default = 100",  type=int)
 parser.add_argument("--sharpen", help="specify the sharpening factor applied before generating the maze, default = 1",  type=float)
 parser.add_argument("--bright_target", help="specify the brightness target to be achieved before generating the maze, scale of 0-255, default = 128",  type=int)
+parser.add_argument("--start_end_anywhere", help="optional argument, allows maze to start and end anywhere, not just on the edges")
 
 
 args=parser.parse_args()
@@ -179,7 +180,7 @@ else:
 if args.bright_target:
     bright_target = args.bright_target
 else:
-    bright_target = 128    
+    bright_target = 224    
 
 im = Image.open(args.input_file)
 
@@ -821,7 +822,7 @@ for cell in maze_map:
 # step through the map to build a sorted list of the longest paths
 distance_list = []
 for cell in solved_maze_map:
-    if cell[2] == 1 and (cell[0] == 0 or cell[0] == height-1 or cell[1] == 0 or cell[1] == width-1): # dead end on an edge
+    if cell[2] == 1 and (cell[0] == 0 or cell[0] == height-1 or cell[1] == 0 or cell[1] == width-1 or args.start_end_anywhere): # dead end on an edge
         start_point = [cell[0], cell[1], [[cell[3][0][1],cell[3][0][2],cell[3][0][3]]]]
         #print(start_point)
         current_node = 0
@@ -848,7 +849,7 @@ long_end_col = width - 1
 max_dist = 0
 for start_point in distance_list:
     for end_point in start_point[2]:
-        if (end_point[0] == 0 or end_point[0] == height-1 or end_point[1] == 0 or end_point[1] == width - 1) and end_point[2] > max_dist:
+        if (end_point[0] == 0 or end_point[0] == height-1 or end_point[1] == 0 or end_point[1] == width - 1 or args.start_end_anywhere) and end_point[2] > max_dist:
             long_start_row = start_point[0]
             long_start_col = start_point[1]
             long_end_row = end_point[0]
