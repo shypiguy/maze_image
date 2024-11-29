@@ -18,6 +18,7 @@ ZOOM = 4.0
 ZOOM_MIN = .75
 ZOOM_MAX = 8.0
 ZOOM_FACTOR = 1.075
+BG_TICK_PER_FRAME = 7
 
 # Maze data constants
 cell_blocked = 0
@@ -36,6 +37,7 @@ end_row = 0
 end_col = 0
 player_cell_data = 0
 bg_index = 0
+bg_tick = 0
  
 WINDOW = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption('Maze Game!')
@@ -167,15 +169,19 @@ def maze_pos (player_row, player_col):
 # Function to render the screen
 def screen_paint (origin, player_color):
     global bg_index
+    global bg_tick
     global WINDOW
     WINDOW.fill((0,0,0)) # black background
     # pick the next bg_images item to blit
     #bg_surface.blit(bg_images[bg_index], (0,0))
     WINDOW.blit(bg_images[bg_index], origin)
-    #increment the bg_indedx
-    bg_index = bg_index + 1
-    if bg_index >= len(bg_images):
-        bg_index = 0
+    #increment the bg_tick and bg_inded
+    bg_tick = bg_tick + 1
+    if bg_tick == BG_TICK_PER_FRAME:
+        bg_tick = 0
+        bg_index = bg_index + 1
+        if bg_index >= len(bg_images):
+            bg_index = 0
     # blit the maze
     WINDOW.blit(maze_image, origin)
     # blit the player dot
