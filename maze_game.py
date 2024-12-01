@@ -18,7 +18,7 @@ ZOOM = 4.0
 ZOOM_MIN = .75
 ZOOM_MAX = 8.0
 ZOOM_FACTOR = 1.075
-BG_TICK_PER_FRAME = 7
+BG_TICK_PER_FRAME = 5
 
 # Maze data constants
 cell_blocked = 0
@@ -146,12 +146,39 @@ def next_cell (cell_row, cell_col, from_row, from_col):
 def breadcrumb (cell_row, cell_col):
     global been_there
     global maze_image
-    # pick color
+    # pick color and draw style
     if cells[cell_row*maze_width + cell_col] & on_path == on_path:
         crumb_color = (255,255,0) #yellow
+        # check above
+        if cell_row > 0:
+            if cells[(cell_row-1)*maze_width + cell_col] & on_path == on_path and \
+               cells[cell_row*maze_width + cell_col] & cango_up == cango_up and \
+               been_there[(cell_row-1)*maze_width + cell_col] == 1:
+                pygame.draw.rect(o_maze_image, crumb_color, (cell_col*8 + 3, cell_row *8 -4, 2, 8))
+        #check below
+        if cell_row < maze_height -1:
+            if cells[(cell_row+1)*maze_width + cell_col] & on_path == on_path and \
+               cells[cell_row*maze_width + cell_col] & cango_down == cango_down and \
+               been_there[(cell_row+1)*maze_width + cell_col] == 1:
+                pygame.draw.rect(o_maze_image, crumb_color, (cell_col*8 + 3, cell_row*8 + 4, 2, 8))
+        #check left
+        if cell_col > 0:
+            if cells[cell_row*maze_width + cell_col-1] & on_path == on_path and \
+               cells[cell_row*maze_width + cell_col] & cango_left == cango_left and \
+               been_there[cell_row*maze_width + cell_col-1] == 1:
+                pygame.draw.rect(o_maze_image, crumb_color, (cell_col*8-4, cell_row*8 + 3, 8, 2))
+        #Check right
+        if cell_col < maze_width - 1:
+            if cells[cell_row*maze_width + cell_col+1] & on_path == on_path and \
+               cells[cell_row*maze_width + cell_col] & cango_right == cango_right and \
+               been_there[cell_row*maze_width + cell_col+1] == 1:
+                pygame.draw.rect(o_maze_image, crumb_color, (cell_col*8+4, cell_row*8 + 3, 8, 2))
+                
+        
+            
     else:
         crumb_color = (255,0,0) #red
-    pygame.draw.circle(o_maze_image, crumb_color, (cell_col*8+4,cell_row*8+4), 2)
+        pygame.draw.circle(o_maze_image, crumb_color, (cell_col*8+4,cell_row*8+4), 2)
     #maze_image = pygame.transform.scale_by(o_maze_image, ZOOM)
     been_there[cell_row*maze_width + cell_col] = 1
 
