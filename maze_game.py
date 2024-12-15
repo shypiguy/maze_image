@@ -18,6 +18,7 @@ ZOOM = 4.0
 ZOOM_MIN = .75
 ZOOM_MAX = 8.0
 ZOOM_FACTOR = 1.075
+BG_TICK_PER_FRAME = 5
 
 # Maze data constants
 cell_blocked = 0
@@ -36,6 +37,7 @@ end_row = 0
 end_col = 0
 player_cell_data = 0
 bg_index = 0
+bg_tick = 0
  
 WINDOW = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption('Maze Game!')
@@ -144,12 +146,39 @@ def next_cell (cell_row, cell_col, from_row, from_col):
 def breadcrumb (cell_row, cell_col):
     global been_there
     global maze_image
-    # pick color
+    # pick color and draw style
     if cells[cell_row*maze_width + cell_col] & on_path == on_path:
         crumb_color = (255,255,0) #yellow
+        # check above
+        if cell_row > 0:
+            if cells[(cell_row-1)*maze_width + cell_col] & on_path == on_path and \
+               cells[cell_row*maze_width + cell_col] & cango_up == cango_up and \
+               been_there[(cell_row-1)*maze_width + cell_col] == 1:
+                pygame.draw.rect(o_maze_image, crumb_color, (cell_col*8 + 3, cell_row *8 -4, 2, 8))
+        #check below
+        if cell_row < maze_height -1:
+            if cells[(cell_row+1)*maze_width + cell_col] & on_path == on_path and \
+               cells[cell_row*maze_width + cell_col] & cango_down == cango_down and \
+               been_there[(cell_row+1)*maze_width + cell_col] == 1:
+                pygame.draw.rect(o_maze_image, crumb_color, (cell_col*8 + 3, cell_row*8 + 4, 2, 8))
+        #check left
+        if cell_col > 0:
+            if cells[cell_row*maze_width + cell_col-1] & on_path == on_path and \
+               cells[cell_row*maze_width + cell_col] & cango_left == cango_left and \
+               been_there[cell_row*maze_width + cell_col-1] == 1:
+                pygame.draw.rect(o_maze_image, crumb_color, (cell_col*8-4, cell_row*8 + 3, 8, 2))
+        #Check right
+        if cell_col < maze_width - 1:
+            if cells[cell_row*maze_width + cell_col+1] & on_path == on_path and \
+               cells[cell_row*maze_width + cell_col] & cango_right == cango_right and \
+               been_there[cell_row*maze_width + cell_col+1] == 1:
+                pygame.draw.rect(o_maze_image, crumb_color, (cell_col*8+4, cell_row*8 + 3, 8, 2))
+                
+        
+            
     else:
         crumb_color = (255,0,0) #red
-    pygame.draw.circle(o_maze_image, crumb_color, (cell_col*8+4,cell_row*8+4), 2)
+        pygame.draw.circle(o_maze_image, crumb_color, (cell_col*8+4,cell_row*8+4), 2)
     #maze_image = pygame.transform.scale_by(o_maze_image, ZOOM)
     been_there[cell_row*maze_width + cell_col] = 1
 
@@ -167,15 +196,19 @@ def maze_pos (player_row, player_col):
 # Function to render the screen
 def screen_paint (origin, player_color):
     global bg_index
+    global bg_tick
     global WINDOW
     WINDOW.fill((0,0,0)) # black background
     # pick the next bg_images item to blit
     #bg_surface.blit(bg_images[bg_index], (0,0))
     WINDOW.blit(bg_images[bg_index], origin)
-    #increment the bg_indedx
-    bg_index = bg_index + 1
-    if bg_index >= len(bg_images):
-        bg_index = 0
+    #increment the bg_tick and bg_inded
+    bg_tick = bg_tick + 1
+    if bg_tick == BG_TICK_PER_FRAME:
+        bg_tick = 0
+        bg_index = bg_index + 1
+        if bg_index >= len(bg_images):
+            bg_index = 0
     # blit the maze
     WINDOW.blit(maze_image, origin)
     # blit the player dot
