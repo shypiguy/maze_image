@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!./env/bin/python
 
 #The MIT License (MIT)
 
@@ -29,9 +29,13 @@ from PIL import Image, ImageOps, ImageStat, ImageEnhance, ImageChops
 import numpy as np
 import cv2
 import json
+import maze_gen_config
+
+# Get Runtime settings from config and arguments
+maze_settings = maze_gen_config.maze_gen_config()
+
 
 sys.modules['Image'] = Image
-import argparse
 
 def point_in_box_oval (point_x, point_y, box_left, box_top, box_right, box_bottom):
     answer = False
@@ -151,38 +155,7 @@ def blockfaces(image_in): # takes a color image in, outputs single channel with 
     blockfaces_out.putdata(bfseq)
     return blockfaces_out
 
-
-#Set up command line arguments
-parser = argparse.ArgumentParser()
-parser.add_argument("input_file",  help="the graphics file to be converted")
-parser.add_argument("output_file",  help="destination for the maze graphic file")
-parser.add_argument("--max_dimension", help="specify the max (width or height) of the output maze, default = 100",  type=int)
-parser.add_argument("--sharpen", help="specify the sharpening factor applied before generating the maze, default = 1",  type=float)
-parser.add_argument("--bright_target", help="specify the brightness target to be achieved before generating the maze, scale of 0-255, default = 128",  type=int)
-parser.add_argument("--start_end_anywhere", help="optional argument, allows maze to start and end anywhere, not just on the edges")
-
-
-args=parser.parse_args()
-
-#Provide a default value for max_dimension if it's not specified on the command line
-if args.max_dimension:
-    max_dimension = args.max_dimension
-else:
-    max_dimension = 100
-
-#Provide a default value for sharpen if it's not specified on the command line
-if args.sharpen:
-    sharpness = args.sharpen
-else:
-    sharpness = 1.0    
-
-#Provide a default value for bright_target if it's not specified on the command line
-if args.bright_target:
-    bright_target = args.bright_target
-else:
-    bright_target = 224    
-
-im = Image.open(args.input_file)
+im = Image.open(maze_settings['input_file'])
 
 #decide what factor to resize by - target is longest dimension = 200
 longest = 0
@@ -193,21 +166,21 @@ if im.size[0] > im.size[1]:
 else:
     longest = im.size[1]
     
-if longest > max_dimension:
-    factor = longest / max_dimension
+if longest > maze_settings['max_dimension']:
+    factor = longest / maze_settings['max_dimension']
 
 # backup the original image
 orig_im = im
 # get the face mask 
 maskim = blockfaces(orig_im)
-maskim.save(args.output_file+"_mask.png")
+maskim.save(maze_settings['output_file']+"_mask.png")
 maskim = maskim.resize((int(orig_im.size[0]/factor),int(orig_im.size[1]/factor)),Image.NEAREST)
-maskim.save(args.output_file+"_mask_small.png")
+maskim.save(maze_settings['output_file']+"_mask_small.png")
 #print(ImageStat.Stat(im).mean)
 # Analyze the overall brightness of the reduced black and white image 
 tempim = im
 enhancer=ImageEnhance.Sharpness(tempim)
-tempim=enhancer.enhance(sharpness)
+tempim=enhancer.enhance(maze_settings['sharpness'])
 bwtempim = tempim.convert("1")
 littletempim=bwtempim.resize((int(bwtempim.size[0]/factor),int(bwtempim.size[1]/factor)),Image.BICUBIC)
 overall_mean = ImageStat.Stat(littletempim).mean[0]
@@ -222,7 +195,7 @@ if overall_mean < 128:
     tempim = ImageOps.invert(tempim)
     overall_mean = ImageStat.Stat(littletempim).mean[0]
 # Adjust the brightness to the target
-while overall_mean < bright_target:
+while overall_mean < maze_settings['bright_target']:
     enhancer=ImageEnhance.Brightness(tempim)
     tempim = enhancer.enhance(1.1)
     bwtempim = tempim.convert("1")
@@ -236,7 +209,7 @@ im = littletempim
 
 # superimpose the mask image on the maze image 
 im = ImageChops.darker(im, maskim)
-im.save(args.output_file+"_mask_comp.png")
+im.save(maze_settings['output_file']+"_mask_comp.png")
 
 # add a border
 im = ImageOps.expand(im, border=3, fill=255) 
@@ -544,7 +517,7 @@ fdata = [(2, 3), (2,4), (2, 4), (3, 2),(3,3), (3, 4), (3, 5), (4, 2),(4, 3), (4,
 #    imseq[top_corner + dot[0]*width*8 + dot[1]] = bval
 # write the black and white maze
 im.putdata(imseq)
-im.save(args.output_file+".png")
+im.save(maze_settings['output_file']+".png")
 
 #convert to rgb and apply the original image on top
 orig_im = orig_im.resize((im.size[0]-48,im.size[1]-48),Image.BICUBIC)
@@ -654,10 +627,10 @@ if inverted == True:
     maze_imseq_r = list(maze_im.getdata(0))
     maze_imseq_g = list(maze_im.getdata(1))
     maze_imseq_b = list(maze_im.getdata(2))
-maze_im.save(args.output_file+"_recolor.png")
+maze_im.save(maze_settings['output_file']+"_recolor.png")
 alpha_maze_im = Image.new("RGBA", (maze_im.width, maze_im.height))
 alpha_maze_im.putdata(list(zip(maze_imseq_r, maze_imseq_g, maze_imseq_b, maze_imseq_a)))
-alpha_maze_im.save(args.output_file+"_alpha.png")
+alpha_maze_im.save(maze_settings['output_file']+"_alpha.png")
 
 
 
@@ -822,7 +795,7 @@ for cell in maze_map:
 # step through the map to build a sorted list of the longest paths
 distance_list = []
 for cell in solved_maze_map:
-    if cell[2] == 1 and (cell[0] == 0 or cell[0] == height-1 or cell[1] == 0 or cell[1] == width-1 or args.start_end_anywhere): # dead end on an edge
+    if cell[2] == 1 and (cell[0] == 0 or cell[0] == height-1 or cell[1] == 0 or cell[1] == width-1 or maze_settings['start_end_anywhere']): # dead end on an edge
         start_point = [cell[0], cell[1], [[cell[3][0][1],cell[3][0][2],cell[3][0][3]]]]
         #print(start_point)
         current_node = 0
@@ -849,7 +822,7 @@ long_end_col = width - 1
 max_dist = 0
 for start_point in distance_list:
     for end_point in start_point[2]:
-        if (end_point[0] == 0 or end_point[0] == height-1 or end_point[1] == 0 or end_point[1] == width - 1 or args.start_end_anywhere) and end_point[2] > max_dist:
+        if (end_point[0] == 0 or end_point[0] == height-1 or end_point[1] == 0 or end_point[1] == width - 1 or maze_settings['start_end_anywhere']) and end_point[2] > max_dist:
             long_start_row = start_point[0]
             long_start_col = start_point[1]
             long_end_row = end_point[0]
@@ -907,7 +880,7 @@ else:
     b_imseq = list(im.getdata(band=2))
     wval = 255
     bval = 0
-    im.save(args.output_file+"_rgb.png")
+    im.save(maze_settings['output_file']+"_rgb.png")
     for row in range (height):
         for col in range (width):
             top_corner = (row*64*width)+ (col*8)
@@ -918,7 +891,7 @@ else:
                     b_imseq[top_corner + dot[0]*width*8 + dot[1]] = 0 
     #print(list(zip(r_imseq, g_imseq, b_imseq)))
     im.putdata(list(zip(r_imseq, g_imseq, b_imseq)))
-    im.save(args.output_file+"_solution.png")
+    im.save(maze_settings['output_file']+"_solution.png")
     #for i in range (1, 240):
     #    write_frame()
 
@@ -942,7 +915,7 @@ for index in range(8):
     file_index = index + 1
     circ_img = Image.open("./src/circles" + str(file_index) + ".png")
     circ_img = circ_img.crop((crop_left, crop_top, crop_right, crop_bottom))
-    circ_img.save(args.output_file+"_bg"+str(file_index)+".png")
+    circ_img.save(maze_settings['output_file']+"_bg"+str(file_index)+".png")
 
 
 
@@ -952,15 +925,15 @@ mdf.update({"jsonType":"maze_image"})
 mdf.update({"version":"0.0.1"})
 mdf.update({"description":"no description given"})
 mdf.update({"metaData":"no medatadata given"})
-mdf.update({"name":args.output_file})
+mdf.update({"name":maze_settings['output_file']})
 mdf.update({"width":width})
 mdf.update({"height":height})
-mdf.update({"originalImage":args.input_file})
-mdf.update({"gameImage":args.output_file+"_alpha.png"})
+mdf.update({"originalImage":maze_settings['input_file']})
+mdf.update({"gameImage":maze_settings['output_file']+"_alpha.png"})
 bg_images = []
 for index in range(8):
     file_index = index + 1
-    bg_images.append(args.output_file+"_bg"+str(file_index)+".png")    
+    bg_images.append(maze_settings['output_file']+"_bg"+str(file_index)+".png")    
 mdf.update({"backgroundImages":bg_images})
 cells_out = []
 for row in range(height):
@@ -978,6 +951,6 @@ for row in range(height):
             cell_value = cell_value + 64
         cells_out.append(cell_value)
 mdf.update({"cells":cells_out})
-with open(args.output_file+"_data.json", "w") as f:
+with open(maze_settings['output_file']+"_data.json", "w") as f:
     f.write(json.dumps(mdf))
 
