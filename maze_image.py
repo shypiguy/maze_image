@@ -30,10 +30,20 @@ import numpy as np
 import cv2
 import json
 import maze_gen_config
+import logging
+from logging.handlers import RotatingFileHandler
+
+logging.basicConfig(handlers=[RotatingFileHandler('maze_image.log', mode='a', maxBytes=100000, backupCount=20)],
+                    level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    datefmt='%Y-%m-%dT%H:%M:%S')
+
+logger=logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Get Runtime settings from config and arguments
 maze_settings = maze_gen_config.maze_gen_config()
-
+logger.info("Settings %s", maze_settings)
 
 sys.modules['Image'] = Image
 
@@ -59,6 +69,7 @@ def blockfaces(image_in): # takes a color image in, outputs single channel with 
     # detect the faces as box in face
     gray_image = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2GRAY)
     face_classifier = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    logger.info("face detection started")
     face = face_classifier.detectMultiScale(gray_image,  minNeighbors=16, minSize=(32, 32)) #scaleFactor=1.2,
     for box in face:
         # set new dimensions for face box (narrower, taller)
@@ -67,6 +78,7 @@ def blockfaces(image_in): # takes a color image in, outputs single channel with 
         new_r = int(new_l+box[2]*.8)
         new_b = int(new_t+box[3]*1.2)
         facepic = image_in.crop((new_l, new_t, new_r, new_b))
+        logger.info("face found at box %s", box)
         # build the channel data for the face box
         facepic_r = list(facepic.getdata(0))
         facepic_g = list(facepic.getdata(1))
