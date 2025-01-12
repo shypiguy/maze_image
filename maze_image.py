@@ -30,10 +30,19 @@ import numpy as np
 import cv2
 import json
 import maze_gen_config
+import logging
+from logging.handlers import RotatingFileHandler
+
+logging.basicConfig(handlers=[RotatingFileHandler('maze_image.log', mode='a', maxBytes=100000, backupCount=20)],
+                    level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+logger=logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Get Runtime settings from config and arguments
 maze_settings = maze_gen_config.maze_gen_config()
-
+logger.info("Settings %s", maze_settings)
 
 sys.modules['Image'] = Image
 
@@ -59,7 +68,9 @@ def blockfaces(image_in): # takes a color image in, outputs single channel with 
     # detect the faces as box in face
     gray_image = cv2.cvtColor(open_cv_image, cv2.COLOR_BGR2GRAY)
     face_classifier = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    logger.info("face detection started")
     face = face_classifier.detectMultiScale(gray_image,  minNeighbors=16, minSize=(32, 32)) #scaleFactor=1.2,
+    logger.info("%s faces found", len(face))
     for box in face:
         # set new dimensions for face box (narrower, taller)
         new_l = int(box[0]+box[2]*.1)
@@ -67,11 +78,13 @@ def blockfaces(image_in): # takes a color image in, outputs single channel with 
         new_r = int(new_l+box[2]*.8)
         new_b = int(new_t+box[3]*1.2)
         facepic = image_in.crop((new_l, new_t, new_r, new_b))
+        logger.info("face found at box %s", box)
         # build the channel data for the face box
         facepic_r = list(facepic.getdata(0))
         facepic_g = list(facepic.getdata(1))
         facepic_b = list(facepic.getdata(2))
         #build hue histogram
+        logger.info("building histogram of face hues")
         hueset = {}
         for row in range(facepic.size[1]):
             for col in range(facepic.size[0]):
@@ -96,6 +109,7 @@ def blockfaces(image_in): # takes a color image in, outputs single channel with 
                     hue = round(hue)
                     hueset[hue] = hueset.get(hue,  0) + 1
         # find face hue range 
+        logger.info("identifying narrowest range of hues comprising majority of face")
         targetsum = .51*facepic.size[0]/2*facepic.size[1]/2*np.pi
         peaksum = 0
         peakhue = 0
@@ -116,9 +130,10 @@ def blockfaces(image_in): # takes a color image in, outputs single channel with 
                     peakvariance = variance
             variance = variance + 1
         variance = variance + 3
-        print(peakhue, peakvariance, peaksum)
+        logger.info("peak hue is %s, variance is +/- %s", peakhue, peakvariance)
         
         # construct the faceskin image for this box
+        logger.info("constructing face mask")
         for row in range(facepic.size[1]):
             for col in range(facepic.size[0]):
                 if point_in_box_oval (col, row, 0, 0, facepic.size[0], facepic.size[1]):
@@ -152,6 +167,7 @@ def blockfaces(image_in): # takes a color image in, outputs single channel with 
                             huematch = 1
                     if huematch == 1:
                         bfseq[image_pixel_address] = 0
+    logger.info("returning all face masks")
     blockfaces_out.putdata(bfseq)
     return blockfaces_out
 
@@ -169,47 +185,59 @@ else:
 if longest > maze_settings['max_dimension']:
     factor = longest / maze_settings['max_dimension']
 
+logger.info("image scaling factor calculated: %s", factor)
+    
+
 # backup the original image
 orig_im = im
 # get the face mask 
-maskim = blockfaces(orig_im)
-maskim.save(maze_settings['output_file']+"_mask.png")
-maskim = maskim.resize((int(orig_im.size[0]/factor),int(orig_im.size[1]/factor)),Image.NEAREST)
-maskim.save(maze_settings['output_file']+"_mask_small.png")
+if maze_settings['face_detect']:
+    logger.info("requesting face detection")
+    maskim = blockfaces(orig_im)
+    maskim.save(maze_settings['output_file']+"_mask.png")
+    maskim = maskim.resize((int(orig_im.size[0]/factor),int(orig_im.size[1]/factor)),Image.NEAREST)
+    maskim.save(maze_settings['output_file']+"_mask_small.png")
 #print(ImageStat.Stat(im).mean)
 # Analyze the overall brightness of the reduced black and white image 
+logger.info("measuring initial image brightness")
 tempim = im
 enhancer=ImageEnhance.Sharpness(tempim)
 tempim=enhancer.enhance(maze_settings['sharpness'])
 bwtempim = tempim.convert("1")
 littletempim=bwtempim.resize((int(bwtempim.size[0]/factor),int(bwtempim.size[1]/factor)),Image.BICUBIC)
 overall_mean = ImageStat.Stat(littletempim).mean[0]
-print(overall_mean)
+logger.info("initial image brightness is %s", overall_mean)
 # Decide whether to auto-invert 
 inverted = False
 if overall_mean < 128:
     inverted = True
     # invert the orginal image and the little temp image
+    logger.info("inverting image")
     littletempim = ImageOps.invert(littletempim)
     orig_im = ImageOps.invert(orig_im)
     tempim = ImageOps.invert(tempim)
     overall_mean = ImageStat.Stat(littletempim).mean[0]
+    logger.info("updated image brightness is %s", overall_mean)
 # Adjust the brightness to the target
+bright_runs = 0
 while overall_mean < maze_settings['bright_target']:
     enhancer=ImageEnhance.Brightness(tempim)
     tempim = enhancer.enhance(1.1)
     bwtempim = tempim.convert("1")
     littletempim=bwtempim.resize((int(bwtempim.size[0]/factor),int(bwtempim.size[1]/factor)),Image.BICUBIC)
     overall_mean = ImageStat.Stat(littletempim).mean[0]
-    print(overall_mean)
+    bright_runs = bright_runs + 1
+logger.info("final image brightness is %s after %s adjustments ", overall_mean, bright_runs)
 
 
 # set the maze image
 im = littletempim
 
 # superimpose the mask image on the maze image 
-im = ImageChops.darker(im, maskim)
-im.save(maze_settings['output_file']+"_mask_comp.png")
+if maze_settings['face_detect']:
+    logger.info("superimposing face detection data on image")
+    im = ImageChops.darker(im, maskim)
+    im.save(maze_settings['output_file']+"_mask_comp.png")
 
 # add a border
 im = ImageOps.expand(im, border=3, fill=255) 
@@ -235,6 +263,7 @@ systematic = 0
 frame_num = 0
 
 #initialize memory for the maze
+logger.info("initializing maze structure")
 maze = [[[0 for element in range(6)] for row in range(width)] for col in range(height)]
 
 
@@ -412,31 +441,44 @@ bval = 0
 # set up the black squares as unavailable
 seq = list(im.getdata())
 
+logger.info("initializing maze image")
 im=Image.new("1", (width*8, height*8))
 imseq = [255 for pixel in range (im.size[0]*im.size[1])]
- 
+logger.info("identifying blocked off cells") 
+block_count = 0
 for row in range(height):
     for col in range(width):
         if seq[(row*width)+(col)] == 0:
+            block_count = block_count + 1
             for info in range(6):
                 maze[row][col][info] = 1
             draw_square(row,  col)
-            
+logger.info("identified %s blocked off cells", block_count)
+
 #print "after blocking black pixels:"
 #print entered_count() 
 
 # mark any isolated white squares as done and blocked
+logger.info("identifying isolated open cells") 
+block_count = 0
 for row in range(height):
     for col in range(width):
         if seq[(row*width)+(col)] == 255: 
             if stuck(row, col) == 1:
+                block_count = block_count + 1
                 maze[row][col][entered] = 1
+logger.info("identified %s isolated cells", block_count)
+
+
 # after blocking isolated white pixels:
 squares_entered = entered_count()
  
 
 current_square = random_square(1)
 maze[current_square[0]][current_square[1]][entered] = 1
+
+logger.info("starting maze generation")
+walk_count = 1
 while squares_entered < (height * width):
     
     #new walk
@@ -452,12 +494,11 @@ while squares_entered < (height * width):
     if squares_entered > (width*height):
         break
     current_square = random_square(0)
+    walk_count = walk_count + 1
     maze[current_square[0]][current_square[1]][entered] = 1  
 
+logger.info("maze generated in %s walks", walk_count)
    
-
-print ("Calculated")
-
 # build the maze image
 #im=im.resize((im.size[0]*8,im.size[1]*8),Image.NEAREST)
 #im=Image.new("1", (width*8, height*8))
@@ -518,6 +559,7 @@ fdata = [(2, 3), (2,4), (2, 4), (3, 2),(3,3), (3, 4), (3, 5), (4, 2),(4, 3), (4,
 # write the black and white maze
 im.putdata(imseq)
 im.save(maze_settings['output_file']+".png")
+logger.info("basic maze image built")
 
 #convert to rgb and apply the original image on top
 orig_im = orig_im.resize((im.size[0]-48,im.size[1]-48),Image.BICUBIC)
@@ -631,6 +673,7 @@ maze_im.save(maze_settings['output_file']+"_recolor.png")
 alpha_maze_im = Image.new("RGBA", (maze_im.width, maze_im.height))
 alpha_maze_im.putdata(list(zip(maze_imseq_r, maze_imseq_g, maze_imseq_b, maze_imseq_a)))
 alpha_maze_im.save(maze_settings['output_file']+"_alpha.png")
+logger.info("composite maze image built")
 
 
 
@@ -746,6 +789,7 @@ for row in range(height):
                 cell_type[row][col]=destination
             else:
                 cell_type[row][col]=hallway
+logger.info("maze cells categorized")
 # step 2 reduce map
 row_element = 0
 col_element = 1
@@ -791,7 +835,7 @@ for cell in maze_map:
                         next_direction = whats_right(next_direction)
     solved_maze_map += [cell]
 #print(solved_maze_map)    #debug step
-
+logger.info("maze neighbors identified")
 # step through the map to build a sorted list of the longest paths
 distance_list = []
 for cell in solved_maze_map:
@@ -813,6 +857,7 @@ for cell in solved_maze_map:
             current_node = current_node + 1
         distance_list += [start_point]    
 #print(distance_list)
+logger.info("maze junction extended distances identified")
 
 #step throught the distance list to find the longest path
 long_start_row = 0
@@ -828,7 +873,7 @@ for start_point in distance_list:
             long_end_row = end_point[0]
             long_end_col = end_point[1]
             max_dist = end_point[2]
-        
+logger.info("longest path identifed (%s cells)", max_dist)        
                 
     
         
@@ -854,7 +899,7 @@ new_point = []
 if maze[cur_row][cur_col][cur_dir] == 0:
     cur_dir = down
     
-
+solution_steps = 0
 while  solved == 0: # pass_thru_origin <= 1 and
     
     if can_go(cur_row,  cur_col,  whats_left(cur_dir)) ==1:
@@ -863,6 +908,7 @@ while  solved == 0: # pass_thru_origin <= 1 and
         while can_go(cur_row,  cur_col,  cur_dir) ==0:
             cur_dir = whats_right(cur_dir)
     new_point = move_from(cur_row,  cur_col,  cur_dir)
+    solution_steps = solution_steps + 1
     cur_row = new_point[0]
     cur_col = new_point[1]
     if cur_col ==0 and cur_dir ==0:
@@ -871,9 +917,9 @@ while  solved == 0: # pass_thru_origin <= 1 and
         solved = 1
 
 if solved == 0:
-    print ("No solution")
+    logger.warning("no maze solution found after %s steps", solution_steps)
 else:
-    print( "SOLVED!")
+    logger.info("maze solution found with %s steps", solution_steps)
     im = im.convert("RGB")
     r_imseq = list(im.getdata(band=0))
     g_imseq = list(im.getdata(band=1))
@@ -892,6 +938,7 @@ else:
     #print(list(zip(r_imseq, g_imseq, b_imseq)))
     im.putdata(list(zip(r_imseq, g_imseq, b_imseq)))
     im.save(maze_settings['output_file']+"_solution.png")
+    logger.info("maze solution rendered")
     #for i in range (1, 240):
     #    write_frame()
 
@@ -916,7 +963,7 @@ for index in range(8):
     circ_img = Image.open("./src/circles" + str(file_index) + ".png")
     circ_img = circ_img.crop((crop_left, crop_top, crop_right, crop_bottom))
     circ_img.save(maze_settings['output_file']+"_bg"+str(file_index)+".png")
-
+logger.info("background animation generated")
 
 
 # build the maze data file
@@ -953,4 +1000,5 @@ for row in range(height):
 mdf.update({"cells":cells_out})
 with open(maze_settings['output_file']+"_data.json", "w") as f:
     f.write(json.dumps(mdf))
-
+logger.info("maze data file generated")
+logger.info("EXITING")
