@@ -233,12 +233,14 @@ if overall_mean < 128:
     logger.info("updated image brightness is %s", overall_mean)
 # Adjust the brightness to the target
 bright_runs = 0
-while overall_mean < maze_settings['bright_target']:
+while overall_mean < maze_settings['bright_target']-1:
+    b_factor = (maze_settings['bright_target']-overall_mean)/overall_mean+1
     enhancer=ImageEnhance.Brightness(tempim)
-    tempim = enhancer.enhance(1.1)
+    tempim = enhancer.enhance(b_factor)
     bwtempim = tempim.convert("1")
     littletempim=bwtempim.resize((int(bwtempim.size[0]/factor),int(bwtempim.size[1]/factor)),Image.BICUBIC)
     overall_mean = ImageStat.Stat(littletempim).mean[0]
+    logger.info('New brightness is %s after brightening by %s', overall_mean, b_factor)
     bright_runs = bright_runs + 1
 logger.info("final image brightness is %s after %s adjustments ", overall_mean, bright_runs)
 
