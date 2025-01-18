@@ -78,36 +78,41 @@ def blockfaces(image_in): # takes a color image in, outputs single channel with 
         new_r = int(new_l+box[2]*.8)
         new_b = int(new_t+box[3]*1.2)
         facepic = image_in.crop((new_l, new_t, new_r, new_b))
+        facepic_hsv = facepic.convert("HSV")
         logger.info("face found at box %s", box)
         # build the channel data for the face box
-        facepic_r = list(facepic.getdata(0))
-        facepic_g = list(facepic.getdata(1))
-        facepic_b = list(facepic.getdata(2))
+        facepic_h = list(facepic_hsv.getdata(0))
+        #facepic_r = list(facepic.getdata(0))
+        #facepic_g = list(facepic.getdata(1))
+        #facepic_b = list(facepic.getdata(2))
         #build hue histogram
         logger.info("building histogram of face hues")
         hueset = {}
+        hset = [0]*256
         for row in range(facepic.size[1]):
             for col in range(facepic.size[0]):
                 if point_in_box_oval (col, row, 0, 0, facepic.size[0], facepic.size[1]):
                     face_pixel_address = row*facepic.size[0]+col
-                    rv = facepic_r[face_pixel_address]
-                    gv = facepic_g[face_pixel_address]
-                    bv = facepic_b[face_pixel_address]
-                    minv = min(rv,gv,bv)
-                    maxv = max(rv,gv,bv)
-                    hue = 0.0
-                    if maxv > minv:
-                        if rv == maxv:
-                            hue = (gv-bv)/(maxv-minv)
-                        if gv == maxv:
-                            hue = 2.0 + (bv-rv)/(maxv-minv)
-                        if bv == maxv:
-                            hue = 4.0 + (rv-gv)/(maxv-minv)
-                    hue = hue * 60
-                    if hue < 0:
-                        hue = hue + 360
-                    hue = round(hue)
-                    hueset[hue] = hueset.get(hue,  0) + 1
+                    hue = facepic_h[face_pixel_address]
+                    #rv = facepic_r[face_pixel_address]
+                    #gv = facepic_g[face_pixel_address]
+                    #bv = facepic_b[face_pixel_address]
+                    #minv = min(rv,gv,bv)
+                    #maxv = max(rv,gv,bv)
+                    #hue = 0.0
+                    #if maxv > minv:
+                    #    if rv == maxv:
+                    #        hue = (gv-bv)/(maxv-minv)
+                    #    if gv == maxv:
+                    #        hue = 2.0 + (bv-rv)/(maxv-minv)
+                    #    if bv == maxv:
+                    #        hue = 4.0 + (rv-gv)/(maxv-minv)
+                    #hue = hue * 60
+                    #if hue < 0:
+                    #    hue = hue + 360
+                    #hue = round(hue)
+                    #hueset[hue] = hueset.get(hue,  0) + 1
+                    hset[hue] = hset[hue] + 1
         # find face hue range 
         logger.info("identifying narrowest range of hues comprising majority of face")
         targetsum = .51*facepic.size[0]/2*facepic.size[1]/2*np.pi
@@ -116,14 +121,15 @@ def blockfaces(image_in): # takes a color image in, outputs single channel with 
         peakvariance = 0
         variance = 0
         while peaksum < targetsum:
-            for basehue in range(360):
+            for basehue in range(255):
                 setsum = 0
                 for hue in range(basehue-variance,basehue+variance+1):
                     if hue < 0:
-                        hue = hue+360
-                    if hue > 359:
-                        hue = hue-360
-                    setsum = setsum + hueset.get(hue,0)
+                        hue = hue+255
+                    if hue > 254:
+                        hue = hue-255
+                    #setsum = setsum + hueset.get(hue,0)
+                    setsum = setsum + hset[hue]
                 if setsum > peaksum:
                     peaksum = setsum
                     peakhue = basehue
@@ -139,30 +145,31 @@ def blockfaces(image_in): # takes a color image in, outputs single channel with 
                 if point_in_box_oval (col, row, 0, 0, facepic.size[0], facepic.size[1]):
                     face_pixel_address = row*facepic.size[0]+col
                     image_pixel_address = (row+new_t)*blockfaces_out.size[0] + col + new_l 
-                    rv = facepic_r[face_pixel_address]
-                    gv = facepic_g[face_pixel_address]
-                    bv = facepic_b[face_pixel_address]
-                    minv = min(rv,gv,bv)
-                    maxv = max(rv,gv,bv)
-                    hue = 0.0
-                    if maxv > minv:
-                        if rv == maxv:
-                            hue = (gv-bv)/(maxv-minv)
-                        if gv == maxv:
-                            hue = 2.0 + (bv-rv)/(maxv-minv)
-                        if bv == maxv:
-                            hue = 4.0 + (rv-gv)/(maxv-minv)
-                    hue = hue * 60
-                    if hue < 0:
-                        hue = hue + 360
-                    hue = round(hue)
+                    hue = facepic_h[face_pixel_address]
+                    #rv = facepic_r[face_pixel_address]
+                    #gv = facepic_g[face_pixel_address]
+                    #bv = facepic_b[face_pixel_address]
+                    #minv = min(rv,gv,bv)
+                    #maxv = max(rv,gv,bv)
+                    #hue = 0.0
+                    #if maxv > minv:
+                    #    if rv == maxv:
+                    #        hue = (gv-bv)/(maxv-minv)
+                    #    if gv == maxv:
+                    #        hue = 2.0 + (bv-rv)/(maxv-minv)
+                    #    if bv == maxv:
+                    #        hue = 4.0 + (rv-gv)/(maxv-minv)
+                    #hue = hue * 60
+                    #if hue < 0:
+                    #    hue = hue + 360
+                    #hue = round(hue)
                     huematch = 0
                     for targethue in range (peakhue-peakvariance,peakhue+peakvariance+1):
                         comparehue = targethue
-                        if comparehue > 359:
-                            comparehue = comparehue-360
+                        if comparehue > 254:
+                            comparehue = comparehue-255
                         if comparehue < 0:
-                            comparehue = comparehue+360
+                            comparehue = comparehue+255
                         if hue == comparehue:
                             huematch = 1
                     if huematch == 1:
@@ -192,8 +199,14 @@ logger.info("image scaling factor calculated: %s", factor)
 orig_im = im
 # get the face mask 
 if maze_settings['face_detect']:
+    #identify an efficient image size - target is minimum dimension of 600 pixels
+    m_max_edge = max(orig_im.size)
+    logger.info("max edge is %s", m_max_edge)
+    m_factor = m_max_edge/600
+    logger.info("orig_im size is %s by %s", orig_im.size[0], orig_im.size[1])
     logger.info("requesting face detection")
-    maskim = blockfaces(orig_im)
+    #maskim = blockfaces(orig_im)
+    maskim = blockfaces(orig_im.resize((int(orig_im.size[0]/m_factor),int(orig_im.size[1]/m_factor)),Image.NEAREST))
     maskim.save(maze_settings['output_file']+"_mask.png")
     maskim = maskim.resize((int(orig_im.size[0]/factor),int(orig_im.size[1]/factor)),Image.NEAREST)
     maskim.save(maze_settings['output_file']+"_mask_small.png")
@@ -836,6 +849,7 @@ for cell in maze_map:
     solved_maze_map += [cell]
 #print(solved_maze_map)    #debug step
 logger.info("maze neighbors identified")
+#logger.info('map = %s', solved_maze_map)
 # step through the map to build a sorted list of the longest paths
 distance_list = []
 for cell in solved_maze_map:
@@ -857,7 +871,7 @@ for cell in solved_maze_map:
             current_node = current_node + 1
         distance_list += [start_point]    
 #print(distance_list)
-logger.info("maze junction extended distances identified")
+#logger.info("maze junction extended distances identified, distance_list is %s", distance_list)
 
 #step throught the distance list to find the longest path
 long_start_row = 0
