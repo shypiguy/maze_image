@@ -787,6 +787,7 @@ cell_type = 0 # first data element
 hallway = 0       # cell type value
 destination = 1   # cell type value
 intersection = 2  # cell type value
+crossroads = 3    # cell type value
 neighbor = 1  # second data element
 distance = 2  #third data element
 cell_type = [[-1 for row in range(width)] for col in range(height)]
@@ -798,7 +799,9 @@ for row in range(height):
             dir_sum = 0
             for direction in range(4):
                 dir_sum = dir_sum + maze[row][col][direction]
-            if dir_sum >= 3:
+            if dir_sum == 4:
+                cell_type[row][col]=crossroads
+            elif dir_sum == 3:
                 cell_type[row][col]=intersection
             elif dir_sum == 1:
                 cell_type[row][col]=destination
@@ -823,7 +826,9 @@ for cell in maze_map:
     if cell[type_element] == destination:
         neighbor_count = 1 
     elif cell[type_element] == intersection:
-        neighbor_count = 3 
+        neighbor_count = 3
+    elif cell[type_element] == crossroads:
+        neighbor_count = 4
     while len(cell[neighbors]) < neighbor_count:
         cum_distance = 0
         neighbor_found = False
@@ -851,7 +856,7 @@ for cell in maze_map:
     solved_maze_map += [cell]
 #print(solved_maze_map)    #debug step
 logger.info("maze neighbors identified")
-#logger.info('map = %s', solved_maze_map)
+logger.debug('map = %s', solved_maze_map)
 # step through the map to build a sorted list of the longest paths
 distance_list = []
 for cell in solved_maze_map:
