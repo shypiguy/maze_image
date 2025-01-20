@@ -32,6 +32,7 @@ import json
 import maze_gen_config
 import logging
 from logging.handlers import RotatingFileHandler
+import copy
 
 logging.basicConfig(handlers=[RotatingFileHandler('maze_image.log', mode='a', maxBytes=100000, backupCount=20)],
                     level=logging.INFO,
@@ -876,9 +877,18 @@ for cell in solved_maze_map:
                         if next_node_found == False:
                             start_point[2] += [[next_node[1], next_node[2], next_node[3] + this_point[2]]]
             current_node = current_node + 1
-        distance_list += [start_point]    
+        # trim the collection before adding to distance_list
+        max_d = 0
+        best_destination = []
+        for destination in start_point[2]:
+            if destination[2] > max_d and destination[0]*width + destination[1] > cell[0]*width + cell[1]:
+                max_d = destination[2]
+                best_destination = copy.deepcopy(destination)
+        if len(best_destination) > 0:
+            start_point[2] = [copy.deepcopy(destination)]
+            distance_list += [start_point]    
 #print(distance_list)
-#logger.info("maze junction extended distances identified, distance_list is %s", distance_list)
+logger.info("maze junction extended distances identified")
 
 #step throught the distance list to find the longest path
 long_start_row = 0
