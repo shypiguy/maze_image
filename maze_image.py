@@ -722,22 +722,22 @@ def can_go(row, col, dir):
    global maze
    return maze[row][col][dir]
   
-def move_from(row,  col,  direction):
-    global path
-    if can_go(row, col, direction) == 1:
-        fcol = col
-        frow= row
-        if direction == up:
-            frow = row-1
-        elif direction == down:
-            frow = row + 1
-        elif direction == right:
-            fcol = col +1
-        elif direction == left:
-            fcol = col - 1
-        path[frow][fcol] = abs(path[frow][fcol] -1) # switch the value of the square
-        path[row][col] = path[frow][fcol] #set the original point to match
-        return [frow, fcol]
+##def move_from(row,  col,  direction):
+##    global path
+##    if can_go(row, col, direction) == 1:
+##        fcol = col
+##        frow= row
+##        if direction == up:
+##            frow = row-1
+##        elif direction == down:
+##            frow = row + 1
+##        elif direction == right:
+##            fcol = col +1
+##        elif direction == left:
+##            fcol = col - 1
+##        path[frow][fcol] = abs(path[frow][fcol] -1) # switch the value of the square
+##        path[row][col] = path[frow][fcol] #set the original point to match
+##        return [frow, fcol]
 
 def move_from_simple(row,  col,  direction):
     if can_go(row, col, direction) == 1:
@@ -767,16 +767,16 @@ def cell_in_maze_map(cell_in, maze_map_in):
             answer = True
     return answer
 
-def opposite_direction(direction_in):
-    if direction_in == down:
-        answer = up
-    elif direction_in == left:
-        answer = right
-    elif direction_in == up:
-        answer = down
-    elif direction_in == right:
-        answer = left
-    return answer
+##def opposite_direction(direction_in):
+##    if direction_in == down:
+##        answer = up
+##    elif direction_in == left:
+##        answer = right
+##    elif direction_in == up:
+##        answer = down
+##    elif direction_in == right:
+##        answer = left
+##    return answer
         
 # Build the network of destinations and intersections
 # destination is a cell with only one way out
@@ -817,7 +817,7 @@ neighbors = 3
 maze_map = []
 for row in range(height):
     for col in range(width):
-        if cell_type[row][col] == destination or cell_type[row][col] == intersection:
+        if cell_type[row][col] == destination or cell_type[row][col] == intersection or cell_type[row][col] == crossroads:
             maze_map += [[row, col, cell_type[row][col], []]]
 #print(maze_map)    #debug step
 solved_maze_map = []
@@ -841,13 +841,17 @@ for cell in maze_map:
                     start_direction = try_direction
         next_direction = start_direction
         this_cell = [cell[row_element], cell[col_element]]
+        walk = []
+        walk += [this_cell]
         while neighbor_found == False:
-            cum_distance = cum_distance + 1                   
+            cum_distance = cum_distance + 1   # good point to add to the walk map                
             next_cell = move_from_simple(this_cell[0], this_cell[1], next_direction)
+            #walk += [[next_cell[0], next_cell[1]]]
             if cell_in_maze_map(next_cell, maze_map) == True:
                 neighbor_found = True
-                cell[neighbors] += [[start_direction, next_cell[0], next_cell[1], cum_distance]]
+                cell[neighbors] += [[start_direction, next_cell[0], next_cell[1], cum_distance, walk]]  # Here's where the nighbor is added
             else:
+                walk += [[next_cell[0], next_cell[1]]]
                 this_cell = next_cell
                 if can_go(this_cell[0],  this_cell[1],  whats_left(next_direction)) ==1:
                     next_direction = whats_left(next_direction)
@@ -862,7 +866,7 @@ logger.debug('map = %s', solved_maze_map)
 distance_list = []
 for cell in solved_maze_map:
     if cell[2] == 1 and (cell[0] == 0 or cell[0] == height-1 or cell[1] == 0 or cell[1] == width-1 or maze_settings['start_end_anywhere']): # dead end on an edge
-        start_point = [cell[0], cell[1], [[cell[3][0][1],cell[3][0][2],cell[3][0][3]]]]
+        start_point = [cell[0], cell[1], [[cell[3][0][1],cell[3][0][2],cell[3][0][3], cell[3][0][4]]]]
         #print(start_point)
         current_node = 0
         while len(start_point[2]) > current_node:
@@ -875,20 +879,24 @@ for cell in solved_maze_map:
                             if next_node[1] == point[0] and next_node[2] == point[1]:
                                 next_node_found = True
                         if next_node_found == False:
-                            start_point[2] += [[next_node[1], next_node[2], next_node[3] + this_point[2]]]
+                            this_walk = copy.deepcopy(this_point[3])
+                            this_walk += next_node[4]
+                            start_point[2] += [[next_node[1], next_node[2], next_node[3] + this_point[2], this_walk]]
             current_node = current_node + 1
         # trim the collection before adding to distance_list
         max_d = 0
         best_destination = []
         for destination in start_point[2]:
-            if destination[2] > max_d and destination[0]*width + destination[1] > cell[0]*width + cell[1]:
+            if destination[2] > max_d and ((destination[0]*width + destination[1]) > (start_point[0]*width + start_point[1])):
+                logger.debug('destination = %s, width =  %s, start_address = %s, end_address = %s', destination, width, start_point[0]*width + start_point[1], destination[0]*width + destination[1])
                 max_d = destination[2]
                 best_destination = copy.deepcopy(destination)
         if len(best_destination) > 0:
-            start_point[2] = [copy.deepcopy(destination)]
+            start_point[2] = [copy.deepcopy(best_destination)]
             distance_list += [start_point]    
 #print(distance_list)
 logger.info("maze junction extended distances identified")
+logger.debug('distance_list = %s', distance_list)
 
 #step throught the distance list to find the longest path
 long_start_row = 0
@@ -904,48 +912,53 @@ for start_point in distance_list:
             long_end_row = end_point[0]
             long_end_col = end_point[1]
             max_dist = end_point[2]
+            solution_list = end_point[3]
 logger.info("longest path identifed (%s cells)", max_dist)        
-                
-    
-        
+
+path=[[0 for row in range(width)] for col in range(height)]                
+for cell in solution_list:
+    path[cell[0]][cell[1]] = 1
+path[long_end_row][long_end_col] = 1
+solution_steps = 1
+solved = 1        
                 
             
 
 
 
 # start solving
-pass_thru_origin = 0
+#pass_thru_origin = 0
 
 #check if start and destination are open
-if  maze[0][0][blocked] ==1 or maze[height-1][width-1][blocked] == 1:
-    pass_thru_origin = 2 # make solution fail fast
-
-solved = 0
-path=[[0 for row in range(width)] for col in range(height)]
-cur_row = long_start_row
-cur_col = long_start_col
-cur_dir = right
-new_point = []
-
-if maze[cur_row][cur_col][cur_dir] == 0:
-    cur_dir = down
-    
-solution_steps = 0
-while  solved == 0: # pass_thru_origin <= 1 and
-    
-    if can_go(cur_row,  cur_col,  whats_left(cur_dir)) ==1:
-        cur_dir = whats_left(cur_dir)
-    else:
-        while can_go(cur_row,  cur_col,  cur_dir) ==0:
-            cur_dir = whats_right(cur_dir)
-    new_point = move_from(cur_row,  cur_col,  cur_dir)
-    solution_steps = solution_steps + 1
-    cur_row = new_point[0]
-    cur_col = new_point[1]
-    if cur_col ==0 and cur_dir ==0:
-        pass_thru_origin = pass_thru_origin + 1
-    if cur_col == long_end_col and cur_row == long_end_row:
-        solved = 1
+##if  maze[0][0][blocked] ==1 or maze[height-1][width-1][blocked] == 1:
+##    pass_thru_origin = 2 # make solution fail fast
+##
+##solved = 0
+##path=[[0 for row in range(width)] for col in range(height)]
+##cur_row = long_start_row
+##cur_col = long_start_col
+##cur_dir = right
+##new_point = []
+##
+##if maze[cur_row][cur_col][cur_dir] == 0:
+##    cur_dir = down
+##    
+##solution_steps = 0
+##while  solved == 0: # pass_thru_origin <= 1 and
+##    
+##    if can_go(cur_row,  cur_col,  whats_left(cur_dir)) ==1:
+##        cur_dir = whats_left(cur_dir)
+##    else:
+##        while can_go(cur_row,  cur_col,  cur_dir) ==0:
+##            cur_dir = whats_right(cur_dir)
+##    new_point = move_from(cur_row,  cur_col,  cur_dir)
+##    solution_steps = solution_steps + 1
+##    cur_row = new_point[0]
+##    cur_col = new_point[1]
+##    if cur_col ==0 and cur_dir ==0:
+##        pass_thru_origin = pass_thru_origin + 1
+##    if cur_col == long_end_col and cur_row == long_end_row:
+##        solved = 1
 
 if solved == 0:
     logger.warning("no maze solution found after %s steps", solution_steps)
