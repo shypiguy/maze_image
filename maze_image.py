@@ -33,6 +33,7 @@ import maze_gen_config
 import logging
 from logging.handlers import RotatingFileHandler
 import copy
+import multiprocessing, time
 
 logging.basicConfig(handlers=[RotatingFileHandler('maze_image.log', mode='a', maxBytes=100000, backupCount=20)],
                     level=logging.INFO,
@@ -862,10 +863,13 @@ for cell in maze_map:
 #print(solved_maze_map)    #debug step
 logger.info("maze neighbors identified")
 logger.debug('map = %s', solved_maze_map)
+
+
 # step through the map to build a sorted list of the longest paths
-distance_list = []
-for cell in solved_maze_map:
-    if cell[2] == 1 and (cell[0] == 0 or cell[0] == height-1 or cell[1] == 0 or cell[1] == width-1 or maze_settings['start_end_anywhere']): # dead end on an edge
+#distance_list = [] # will be the result of the pool run
+#for cell in solved_maze_map: # solved_maze_map will be the input to the pool
+def distance_item (cell):
+    if cell[2] == 1 and (cell[0] == 0 or cell[0] == height-1 or cell[1] == 0 or cell[1] == width-1 or maze_settings['start_end_anywhere']==True): # dead end on an edge
         start_point = [cell[0], cell[1], [[cell[3][0][1],cell[3][0][2],cell[3][0][3], cell[3][0][4]]]]
         #print(start_point)
         current_node = 0
@@ -888,15 +892,23 @@ for cell in solved_maze_map:
         best_destination = []
         for destination in start_point[2]:
             if destination[2] > max_d and ((destination[0]*width + destination[1]) > (start_point[0]*width + start_point[1])):
-                logger.debug('destination = %s, width =  %s, start_address = %s, end_address = %s', destination, width, start_point[0]*width + start_point[1], destination[0]*width + destination[1])
+                #logger.debug('destination = %s, width =  %s, start_address = %s, end_address = %s', destination, width, start_point[0]*width + start_point[1], destination[0]*width + destination[1])
                 max_d = destination[2]
                 best_destination = copy.deepcopy(destination)
         if len(best_destination) > 0:
             start_point[2] = [copy.deepcopy(best_destination)]
-            distance_list += [start_point]    
+            #distance_list += [start_point]   # [start_point] will be the return
+            return start_point
+
+if __name__ == '__main__': 
+    pool = multiprocessing.Pool()
+    distance_list = pool.map(distance_item, solved_maze_map)
 #print(distance_list)
 logger.info("maze junction extended distances identified")
 logger.debug('distance_list = %s', distance_list)
+
+
+
 
 #step throught the distance list to find the longest path
 long_start_row = 0
@@ -905,14 +917,15 @@ long_end_row = height - 1
 long_end_col = width - 1
 max_dist = 0
 for start_point in distance_list:
-    for end_point in start_point[2]:
-        if (end_point[0] == 0 or end_point[0] == height-1 or end_point[1] == 0 or end_point[1] == width - 1 or maze_settings['start_end_anywhere']) and end_point[2] > max_dist:
-            long_start_row = start_point[0]
-            long_start_col = start_point[1]
-            long_end_row = end_point[0]
-            long_end_col = end_point[1]
-            max_dist = end_point[2]
-            solution_list = end_point[3]
+    if start_point is not None:
+        for end_point in start_point[2]:
+            if (end_point[0] == 0 or end_point[0] == height-1 or end_point[1] == 0 or end_point[1] == width - 1 or maze_settings['start_end_anywhere']) and end_point[2] > max_dist:
+                long_start_row = start_point[0]
+                long_start_col = start_point[1]
+                long_end_row = end_point[0]
+                long_end_col = end_point[1]
+                max_dist = end_point[2]
+                solution_list = end_point[3]
 logger.info("longest path identifed (%s cells)", max_dist)        
 
 path=[[0 for row in range(width)] for col in range(height)]                
