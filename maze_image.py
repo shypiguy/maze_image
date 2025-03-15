@@ -905,7 +905,7 @@ if __name__ == '__main__':
     distance_list = pool.map(distance_item, solved_maze_map)
 #print(distance_list)
 logger.info("maze junction extended distances identified")
-logger.info('distance_list = %s', distance_list)
+logger.debug('distance_list = %s', distance_list)
 
 
 
