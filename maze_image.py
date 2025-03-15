@@ -891,7 +891,7 @@ def distance_item (cell):
         max_d = 0
         best_destination = []
         for destination in start_point[2]:
-            if destination[2] > max_d and ((destination[0]*width + destination[1]) > (start_point[0]*width + start_point[1])):
+            if destination[2] > max_d and ((destination[0]*width + destination[1]) > (start_point[0]*width + start_point[1])) and (destination[0] == 0 or destination[0] == height-1 or destination[1] == 0 or destination[1] == width -1 or maze_settings['start_end_anywhere']==True):
                 #logger.debug('destination = %s, width =  %s, start_address = %s, end_address = %s', destination, width, start_point[0]*width + start_point[1], destination[0]*width + destination[1])
                 max_d = destination[2]
                 best_destination = copy.deepcopy(destination)
