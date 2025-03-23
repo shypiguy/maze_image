@@ -847,10 +847,9 @@ for cell in maze_map:
         while neighbor_found == False:
             cum_distance = cum_distance + 1   # good point to add to the walk map                
             next_cell = move_from_simple(this_cell[0], this_cell[1], next_direction)
-            #walk += [[next_cell[0], next_cell[1]]]
             if cell_in_maze_map(next_cell, maze_map) == True:
                 neighbor_found = True
-                cell[neighbors] += [[start_direction, next_cell[0], next_cell[1], cum_distance, walk]]  # Here's where the nighbor is added
+                cell[neighbors] += [[start_direction, next_cell[0], next_cell[1], cum_distance, walk, cell_type[next_cell[0]][next_cell[1]]]]  # Here's where the nighbor is added
             else:
                 walk += [[next_cell[0], next_cell[1]]]
                 this_cell = next_cell
@@ -860,7 +859,6 @@ for cell in maze_map:
                     while can_go(this_cell[0],  this_cell[1],  next_direction) ==0:
                         next_direction = whats_right(next_direction)
     solved_maze_map += [cell]
-#print(solved_maze_map)    #debug step
 logger.info("maze neighbors identified")
 logger.debug('map = %s', solved_maze_map)
 
@@ -868,9 +866,13 @@ logger.debug('map = %s', solved_maze_map)
 # step through the map to build a sorted list of the longest paths
 #distance_list = [] # will be the result of the pool run
 #for cell in solved_maze_map: # solved_maze_map will be the input to the pool
-def distance_item (cell):
-    if cell[2] == 1 and (cell[0] == 0 or cell[0] == height-1 or cell[1] == 0 or cell[1] == width-1 or maze_settings['start_end_anywhere']==True): # dead end on an edge
-        start_point = [cell[0], cell[1], [[cell[3][0][1],cell[3][0][2],cell[3][0][3], cell[3][0][4]]]]
+def distance_item (cell): 
+    if cell[2] == 1 and (cell[0] == 0
+                        or cell[0] == height-1
+                        or cell[1] == 0
+                        or cell[1] == width-1
+                        or maze_settings['start_end_anywhere']==True): # dead end on an edge
+        start_point = [cell[0], cell[1], [[cell[3][0][1],cell[3][0][2],cell[3][0][3], cell[3][0][4], cell[3][0][5]]]]
         #print(start_point)
         current_node = 0
         while len(start_point[2]) > current_node:
@@ -885,19 +887,24 @@ def distance_item (cell):
                         if next_node_found == False:
                             this_walk = copy.deepcopy(this_point[3])
                             this_walk += next_node[4]
-                            start_point[2] += [[next_node[1], next_node[2], next_node[3] + this_point[2], this_walk]]
+                            start_point[2] += [[next_node[1], next_node[2], next_node[3] + this_point[2], this_walk, next_node[5]]]
             current_node = current_node + 1
         # trim the collection before adding to distance_list
         max_d = 0
         best_destination = []
         for destination in start_point[2]:
-            if destination[2] > max_d and ((destination[0]*width + destination[1]) > (start_point[0]*width + start_point[1])) and (destination[0] == 0 or destination[0] == height-1 or destination[1] == 0 or destination[1] == width -1 or maze_settings['start_end_anywhere']==True):
-                #logger.debug('destination = %s, width =  %s, start_address = %s, end_address = %s', destination, width, start_point[0]*width + start_point[1], destination[0]*width + destination[1])
+            if (destination[2] > max_d
+                and ((destination[0]*width + destination[1]) > (start_point[0]*width + start_point[1]))
+                and destination[4] == 1
+                and (destination[0] == 0
+                     or destination[0] == height-1
+                     or destination[1] == 0
+                     or destination[1] == width -1
+                     or maze_settings['start_end_anywhere']==True)):
                 max_d = destination[2]
                 best_destination = copy.deepcopy(destination)
         if len(best_destination) > 0:
             start_point[2] = [copy.deepcopy(best_destination)]
-            #distance_list += [start_point]   # [start_point] will be the return
             return start_point
 
 if __name__ == '__main__': 
