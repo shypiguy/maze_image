@@ -256,9 +256,6 @@ if maze_settings['face_detect']:
     im = ImageChops.darker(im, maskim)
     im.save(maze_settings['output_file']+"_mask_comp.png")
 
-# add a border
-im = ImageOps.expand(im, border=3, fill=255) 
-
 random.seed()
 maze = []
 
@@ -579,8 +576,7 @@ im.save(maze_settings['output_file']+".png")
 logger.info("basic maze image built")
 
 #convert to rgb and apply the original image on top
-orig_im = orig_im.resize((im.size[0]-48,im.size[1]-48),Image.BICUBIC)
-orig_im = ImageOps.expand(orig_im, border=24, fill=(255,255,255)) 
+orig_im = orig_im.resize((im.size[0],im.size[1]),Image.BICUBIC) 
 orig_imseq_r = list(orig_im.getdata(0))
 orig_imseq_g = list(orig_im.getdata(1))
 orig_imseq_b = list(orig_im.getdata(2))
@@ -608,14 +604,26 @@ for row in range (height):  #trying
         paint_down = False
         paint_left = False
         if maze[row][col][blocked]== 1:
-            if maze[row-1][col][blocked]== 1:
+            if row > 0:
+                if maze[row-1][col][blocked]== 1:
+                        paint_up = True
+            else:
                     paint_up = True
-            if maze[row][col+1][blocked]== 1:
-                    paint_right = True
-            if maze[row+1][col][blocked]== 1:
-                    paint_down = True
-            if maze[row][col-1][blocked]== 1:
-                    paint_left = True
+            if col < width - 1:
+                if maze[row][col+1][blocked]== 1:
+                        paint_right = True
+            else:
+                paint_right = True
+            if row < height - 1:
+                if maze[row+1][col][blocked]== 1:
+                        paint_down = True
+            else:
+                paint_down = True
+            if col > 0:
+                if maze[row][col-1][blocked]== 1:
+                        paint_left = True
+            else:
+                paint_left = True
         else:
             paint_up = maze[row][col][up] == 1
             paint_right = maze[row][col][right] == 1
