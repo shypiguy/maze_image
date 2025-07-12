@@ -481,6 +481,7 @@ for row in range(height):
             if stuck(row, col) == 1:
                 block_count = block_count + 1
                 maze[row][col][entered] = 1
+                maze[row][col][blocked] = 1
 logger.info("identified %s isolated cells", block_count)
 
 
@@ -826,7 +827,7 @@ neighbors = 3
 maze_map = []
 for row in range(height):
     for col in range(width):
-        if cell_type[row][col] == destination or cell_type[row][col] == intersection or cell_type[row][col] == crossroads:
+        if cell_type[row][col] == destination or cell_type[row][col] == intersection or cell_type[row][col] == crossroads or (cell_type[row][col] == hallway and(row == 0 or col == 0 or row == height -1 or col == width -1)) :
             maze_map += [[row, col, cell_type[row][col], []]]
 #print(maze_map)    #debug step
 solved_maze_map = []
@@ -839,6 +840,8 @@ for cell in maze_map:
         neighbor_count = 3
     elif cell[type_element] == crossroads:
         neighbor_count = 4
+    elif cell[type_element] == hallway:
+        neighbor_count = 2
     while len(cell[neighbors]) < neighbor_count:
         cum_distance = 0
         neighbor_found = False
