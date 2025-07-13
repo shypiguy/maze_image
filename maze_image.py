@@ -481,7 +481,7 @@ for row in range(height):
             if stuck(row, col) == 1:
                 block_count = block_count + 1
                 maze[row][col][entered] = 1
-                maze[row][col][blocked] = 1
+                maze[row][col][blocked] = 2
 logger.info("identified %s isolated cells", block_count)
 
 
