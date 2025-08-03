@@ -34,6 +34,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import copy
 import multiprocessing, time
+import hue_analyzer
 
 logging.basicConfig(handlers=[RotatingFileHandler('maze_image.log', mode='a', maxBytes=100000, backupCount=20)],
                     level=logging.INFO,
@@ -181,6 +182,10 @@ def blockfaces(image_in): # takes a color image in, outputs single channel with 
     return blockfaces_out
 
 im = Image.open(maze_settings['input_file'])
+# gather peak hue and variance for later bg image processing
+im_hsv = im.convert("HSV")
+im_h = list(im_hsv.getdata(0))
+im_phav = hue_analyzer.peak_hue_and_v(im_h, 51)
 
 #decide what factor to resize by - target is longest dimension = 200
 longest = 0
@@ -1019,6 +1024,13 @@ else:
 
 
 print ("done")
+# determine the right hue for background images
+im_hue_center = im_phav[0]
+if im_hue_center > 128:
+    bg_hue = im_hue_center - 128
+else:
+    bg_hue = im_hue_center + 128
+logger.info("image hue center was %s, bg hue will be %s", im_phav,bg_hue) 
 
 # cut and size the background images
 # data to work with: width, height, alpha_maze_im, long_end_row, long_end_col
@@ -1037,6 +1049,16 @@ for index in range(8):
     file_index = index + 1
     circ_img = Image.open("./src/circles" + str(file_index) + ".png")
     circ_img = circ_img.crop((crop_left, crop_top, crop_right, crop_bottom))
+    # change the hue of every pixel to bg_hue value
+    hsv_circ_img = circ_img.convert("HSV")
+    hsv_circ_img_h = list(hsv_circ_img.getdata(0))
+    hsv_circ_img_s = list(hsv_circ_img.getdata(1))
+    hsv_circ_img_v = list(hsv_circ_img.getdata(2))
+    new_hsv_circ_img_h = [bg_hue]*len(hsv_circ_img_h)
+    #for circ_pxl in hsv_circ_img_h:
+    #    circ_pxl = bg_hue
+    hsv_circ_img.putdata(list(zip(new_hsv_circ_img_h, hsv_circ_img_s, hsv_circ_img_v)))
+    circ_img = hsv_circ_img.convert("RGB")
     circ_img.save(maze_settings['output_file']+"_bg"+str(file_index)+".png")
 logger.info("background animation generated")
 
