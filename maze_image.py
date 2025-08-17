@@ -214,9 +214,9 @@ if maze_settings['face_detect']:
     logger.info("requesting face detection")
     #maskim = blockfaces(orig_im)
     maskim = blockfaces(orig_im.resize((int(orig_im.size[0]/m_factor),int(orig_im.size[1]/m_factor)),Image.NEAREST))
-    maskim.save(maze_settings['output_file']+"_mask.png")
+    #maskim.save(maze_settings['output_file']+"_mask.png") # old debugging step to render large mask to file
     maskim = maskim.resize((int(orig_im.size[0]/factor),int(orig_im.size[1]/factor)),Image.NEAREST)
-    maskim.save(maze_settings['output_file']+"_mask_small.png")
+    #maskim.save(maze_settings['output_file']+"_mask_small.png") # old debugging step to render small mask to file
 #print(ImageStat.Stat(im).mean)
 # Analyze the overall brightness of the reduced black and white image 
 logger.info("measuring initial image brightness")
@@ -259,7 +259,7 @@ im = littletempim
 if maze_settings['face_detect']:
     logger.info("superimposing face detection data on image")
     im = ImageChops.darker(im, maskim)
-    im.save(maze_settings['output_file']+"_mask_comp.png")
+    #im.save(maze_settings['output_file']+"_mask_comp.png") # old debug step to write composite mak image to disk
 
 random.seed()
 maze = []
@@ -578,7 +578,8 @@ fdata = [(2, 3), (2,4), (2, 4), (3, 2),(3,3), (3, 4), (3, 5), (4, 2),(4, 3), (4,
 #    imseq[top_corner + dot[0]*width*8 + dot[1]] = bval
 # write the black and white maze
 im.putdata(imseq)
-im.save(maze_settings['output_file']+".png")
+if maze_settings['intermediate_images']:
+    im.save(maze_settings['output_file']+".png")
 logger.info("basic maze image built")
 
 #convert to rgb and apply the original image on top
@@ -700,7 +701,7 @@ if inverted == True:
     maze_imseq_r = list(maze_im.getdata(0))
     maze_imseq_g = list(maze_im.getdata(1))
     maze_imseq_b = list(maze_im.getdata(2))
-maze_im.save(maze_settings['output_file']+"_recolor.png")
+#maze_im.save(maze_settings['output_file']+"_recolor.png") # old debug step to render colorized maze without alpha channel
 alpha_maze_im = Image.new("RGBA", (maze_im.width, maze_im.height))
 alpha_maze_im.putdata(list(zip(maze_imseq_r, maze_imseq_g, maze_imseq_b, maze_imseq_a)))
 alpha_maze_im.save(maze_settings['output_file']+"_alpha.png")
@@ -1000,27 +1001,28 @@ if solved == 0:
     logger.warning("no maze solution found after %s steps", solution_steps)
 else:
     logger.info("maze solution found with %s steps", solution_steps)
-    im = im.convert("RGB")
-    r_imseq = list(im.getdata(band=0))
-    g_imseq = list(im.getdata(band=1))
-    b_imseq = list(im.getdata(band=2))
-    wval = 255
-    bval = 0
-    im.save(maze_settings['output_file']+"_rgb.png")
-    for row in range (height):
-        for col in range (width):
-            top_corner = (row*64*width)+ (col*8)
-            # apply the solution dots
-            if path[row][col] ==1:
-                for dot in fdata:
-                    g_imseq[top_corner + dot[0]*width*8 + dot[1]] = 0 
-                    b_imseq[top_corner + dot[0]*width*8 + dot[1]] = 0 
-    #print(list(zip(r_imseq, g_imseq, b_imseq)))
-    im.putdata(list(zip(r_imseq, g_imseq, b_imseq)))
-    im.save(maze_settings['output_file']+"_solution.png")
-    logger.info("maze solution rendered")
-    #for i in range (1, 240):
-    #    write_frame()
+    if maze_settings['intermediate_images']:
+        im = im.convert("RGB")
+        r_imseq = list(im.getdata(band=0))
+        g_imseq = list(im.getdata(band=1))
+        b_imseq = list(im.getdata(band=2))
+        wval = 255
+        bval = 0
+        #im.save(maze_settings['output_file']+"_rgb.png") # old debug step to render rgb converted image of maze
+        for row in range (height):
+            for col in range (width):
+                top_corner = (row*64*width)+ (col*8)
+                # apply the solution dots
+                if path[row][col] ==1:
+                    for dot in fdata:
+                        g_imseq[top_corner + dot[0]*width*8 + dot[1]] = 0 
+                        b_imseq[top_corner + dot[0]*width*8 + dot[1]] = 0 
+        #print(list(zip(r_imseq, g_imseq, b_imseq)))
+        im.putdata(list(zip(r_imseq, g_imseq, b_imseq)))
+        im.save(maze_settings['output_file']+"_solution.png")
+        logger.info("maze solution rendered")
+        #for i in range (1, 240):
+        #    write_frame()
 
 
 print ("done")

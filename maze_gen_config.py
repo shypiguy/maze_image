@@ -27,7 +27,8 @@ def maze_gen_config():
    sharpness = 1.0
    bright_target = 224
    start_end_anywhere = True
-   detect_faces = True   
+   detect_faces = True
+   intermediate_images = False
 
    # Get Command Line Arguments
    parser = argparse.ArgumentParser(prog='maze_image', usage='%(prog)s [options]')
@@ -39,6 +40,7 @@ def maze_gen_config():
    parser.add_argument('-a','--start_end_anywhere',action=argparse.BooleanOptionalAction, help="optional argument, allows maze to start and end anywhere, not just on the edges")
    parser.add_argument('-f','--face_detect',action=argparse.BooleanOptionalAction, help="optional argument, attempts to detect faces and exclude them from the maze paths")
    parser.add_argument('-c','--config_file', help="specify the path to a custom config file not in the list of expected config files")
+   parser.add_argument('-i','--intermediate_images',action=argparse.BooleanOptionalAction, help="optional argument, outputs additional intermediate images of the maze and solution")
    args=parser.parse_args()
 
    # use config parser to get and resolve stored configurations
@@ -63,6 +65,9 @@ def maze_gen_config():
    if config.has_option('maze generation', 'start_end_anywhere'):
        start_end_anywhere = config.get('maze generation', 'start_end_anywhere')
 
+   if config.has_option('image processing', 'intermediate_images'):
+       start_end_anywhere = config.get('maze generation', 'intermediate_images')
+
    # Apply command line arguments
    if args.max_dimension:
        max_dimension = args.max_dimension
@@ -79,6 +84,9 @@ def maze_gen_config():
    if args.face_detect != None:
        detect_faces = args.face_detect
 
+   if args.intermediate_images != None:
+       intermediate_images = args.intermediate_images
+       
    output_file = 'maze_image_' + time.strftime('%Y%m%d%H%M%S', time.gmtime())
    if args.output_file:
        output_file = args.output_file
@@ -90,7 +98,8 @@ def maze_gen_config():
       'face_detect' : detect_faces,
       'max_dimension' : max_dimension,
       'start_end_anywhere' : start_end_anywhere,
-      'output_file' : output_file
+      'output_file' : output_file,
+      'intermediate_images' : intermediate_images
       }
 
 

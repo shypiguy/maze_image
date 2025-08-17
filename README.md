@@ -1,8 +1,10 @@
 # maze_image
-Make a 2D maze out of an image file
-# Usage
-python maze_image.py **input_file** -o [`--`output_file] **output_file_name** -d [`--`max-dimension] **max_dimension** -s [`--`sharpness] **sharpening_factor** -b [`--`bright_target] **brightness** -a|`--`no-a [`-`-start_end_anywhere|`--`no_start_end_anywhere] **start_anywhere_bool** -c [`--`config_file] **config_file_path** -f [`--`face_detect] **face_detect_bool** -h [`--`help]
 
+Make a 2D maze out of an image file
+
+# Usage
+
+python maze_image.py **input_file** -o [`--`output_file] **output_file_name** -d [`--`max-dimension] **max_dimension** -s [`--`sharpness] **sharpening_factor** -b [`--`bright_target] **brightness** -a|`--`no-a [`-`-start_end_anywhere|`--`no_start_end_anywhere] **start_anywhere_bool** -c [`--`config_file] **config_file_path** -f [`--`face_detect] **face_detect_bool** [`--`intermediate_images] **intermediate_images** -h [`--`help]
 
 "input_file" is the path and file name of a image file
 
@@ -20,6 +22,8 @@ python maze_image.py **input_file** -o [`--`output_file] **output_file_name** -d
 
 "face_detect_bool" is a True/False Yes/No value indicating if face detection should be used to block detected faces in the source image from the maze path creation (True) or if this pre-processing step can be skipped. 
 
+"intermediate_images_bool" is a True/False Yes/No value indicating if the additional images (a balck and white image of just the maze without the photo superimposed, and an rgb of the same black and white image with red dots for the solution path superimposed) will be rendered and written to disk.
+
 -h [`--`help] outputs online help for these options
 
 **example:** python ./maze_image.py /home/foo/Pictures/Aunt_Martha.jpg -o am --max_dimension 135
@@ -27,14 +31,15 @@ python maze_image.py **input_file** -o [`--`output_file] **output_file_name** -d
 This would make a maze image 135 cells wide named am.png and maze metadata file out of a picture of your Aunt Martha.
 
 ## Config Files
+
 At runtime, maze_image.py sources its parameters from the following, in order:
 
- 1. Defaults
- 2. /etc/maze_image.conf
- 3. ~/.config/maze_image.conf
- 4. ./maze_image.conf
- 5. the custom config file inidcated by the -c [`--`config_file] command line argument
- 6. command line arguments
+1. Defaults
+2. /etc/maze_image.conf
+3. ~/.config/maze_image.conf
+4. ./maze_image.conf
+5. the custom config file inidcated by the -c [`--`config_file] command line argument
+6. command line arguments
 
 An example config file is provided in the source, and may contain or omit any of the following entries:
 
@@ -44,6 +49,7 @@ An example config file is provided in the source, and may contain or omit any of
     sharpness = 1.2
     bright_target = 218
     face_detect = True
+    intermediate_images = False
     
     [maze generation]
     max_dimension = 62
