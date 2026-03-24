@@ -793,6 +793,59 @@ def cell_in_maze_map(cell_in, maze_map_in):
 ##    elif direction_in == right:
 ##        answer = left
 ##    return answer
+
+# -----------------------------------------------------
+# Add the ring representing the exits
+# -----------------------------------------------------
+
+# initialize 
+ring_maze = [[[0 for element in range(6)] for row in range(width+2)] for col in range(height+2)]
+# copy maze contents to ring_maze
+for row in range(height):
+    for col in range(width):
+        ring_maze[row+1][col+1] = copy.deepcopy(maze[row][col])
+
+# block corners
+ring_maze[0][0] = [1,1,1,1,1,1]
+ring_maze[0][width+1] = [1,1,1,1,1,1]
+ring_maze[height+1][0] = [1,1,1,1,1,1]
+ring_maze[height+1][width+1] = [1,1,1,1,1,1]
+
+# establish top row of exits
+for col in range(width):
+    if ring_maze[1][col+1][blocked]==0: # cell below is not blocked
+        ring_maze[1][col+1][up]=1       # open up the below cell
+        ring_maze[0][col+1][down]=1     # open up the exit cell
+    else:
+        ring_maze[0][col+1] = [1,1,1,1,1,1] # block the exit
+
+# establish bottom row of exits
+for col in range(width):
+    if ring_maze[height][col+1][blocked]==0: # cell above is not blocked
+        ring_maze[height][col+1][down]=1     # open up the above cell
+        ring_maze[height+1][col+1][up]=1     # open up the exit cell
+    else:
+        ring_maze[height+1][col+1] = [1,1,1,1,1,1] # block the exit
+        
+# establish left column of exits
+for row in range(height):
+    if ring_maze[row+1][1][blocked]==0: # cell to right is not blocked
+        ring_maze[row+1][1][left]=1       # open up the rightward cell
+        ring_maze[row+1][0][right]=1     # open up the exit cell
+    else:
+        ring_maze[row+1][0] = [1,1,1,1,1,1] # block the exit
+
+# establish left column of exits
+for row in range(height):
+    if ring_maze[row+1][width][blocked]==0: # cell to left is not blocked
+        ring_maze[row+1][width][right]=1       # open up the leftward cell
+        ring_maze[row+1][width+1][left]=1     # open up the exit cell
+    else:
+        ring_maze[row+1][width+1] = [1,1,1,1,1,1] # block the exit        
+
+logger.info("ring_maze cells created")
+logger.debug('ring_maze = %s', ring_maze)
+
         
 # Build the network of destinations and intersections
 # destination is a cell with only one way out
