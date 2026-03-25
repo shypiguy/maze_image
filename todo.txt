@@ -1,0 +1,1 @@
+Resolve the start and end of the solution in the maze data

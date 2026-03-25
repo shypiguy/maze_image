@@ -707,7 +707,57 @@ alpha_maze_im.putdata(list(zip(maze_imseq_r, maze_imseq_g, maze_imseq_b, maze_im
 alpha_maze_im.save(maze_settings['output_file']+"_alpha.png")
 logger.info("composite maze image built")
 
+# -----------------------------------------------------
+# Add the ring representing the exits
+# -----------------------------------------------------
 
+# initialize 
+ring_maze = [[[0 for element in range(6)] for row in range(width+2)] for col in range(height+2)]
+# copy maze contents to ring_maze
+for row in range(height):
+    for col in range(width):
+        ring_maze[row+1][col+1] = copy.deepcopy(maze[row][col])
+
+# block corners
+ring_maze[0][0] = [1,1,1,1,1,1]
+ring_maze[0][width+1] = [1,1,1,1,1,1]
+ring_maze[height+1][0] = [1,1,1,1,1,1]
+ring_maze[height+1][width+1] = [1,1,1,1,1,1]
+
+# establish top row of exits
+for col in range(width):
+    if ring_maze[1][col+1][blocked]==0: # cell below is not blocked
+        ring_maze[1][col+1][up]=1       # open up the below cell
+        ring_maze[0][col+1][down]=1     # open up the exit cell
+    else:
+        ring_maze[0][col+1] = [1,1,1,1,1,1] # block the exit
+
+# establish bottom row of exits
+for col in range(width):
+    if ring_maze[height][col+1][blocked]==0: # cell above is not blocked
+        ring_maze[height][col+1][down]=1     # open up the above cell
+        ring_maze[height+1][col+1][up]=1     # open up the exit cell
+    else:
+        ring_maze[height+1][col+1] = [1,1,1,1,1,1] # block the exit
+        
+# establish left column of exits
+for row in range(height):
+    if ring_maze[row+1][1][blocked]==0: # cell to right is not blocked
+        ring_maze[row+1][1][left]=1       # open up the rightward cell
+        ring_maze[row+1][0][right]=1     # open up the exit cell
+    else:
+        ring_maze[row+1][0] = [1,1,1,1,1,1] # block the exit
+
+# establish left column of exits
+for row in range(height):
+    if ring_maze[row+1][width][blocked]==0: # cell to left is not blocked
+        ring_maze[row+1][width][right]=1       # open up the leftward cell
+        ring_maze[row+1][width+1][left]=1     # open up the exit cell
+    else:
+        ring_maze[row+1][width+1] = [1,1,1,1,1,1] # block the exit        
+
+logger.info("ring_maze cells created")
+logger.debug('ring_maze = %s', ring_maze)
 
 
 def whats_left(cur_dir):
@@ -735,8 +785,8 @@ def whats_right(cur_dir):
         return right
         
 def can_go(row, col, dir):
-   global maze
-   return maze[row][col][dir]
+   global ring_maze
+   return ring_maze[row][col][dir]
   
 ##def move_from(row,  col,  direction):
 ##    global path
@@ -794,57 +844,7 @@ def cell_in_maze_map(cell_in, maze_map_in):
 ##        answer = left
 ##    return answer
 
-# -----------------------------------------------------
-# Add the ring representing the exits
-# -----------------------------------------------------
 
-# initialize 
-ring_maze = [[[0 for element in range(6)] for row in range(width+2)] for col in range(height+2)]
-# copy maze contents to ring_maze
-for row in range(height):
-    for col in range(width):
-        ring_maze[row+1][col+1] = copy.deepcopy(maze[row][col])
-
-# block corners
-ring_maze[0][0] = [1,1,1,1,1,1]
-ring_maze[0][width+1] = [1,1,1,1,1,1]
-ring_maze[height+1][0] = [1,1,1,1,1,1]
-ring_maze[height+1][width+1] = [1,1,1,1,1,1]
-
-# establish top row of exits
-for col in range(width):
-    if ring_maze[1][col+1][blocked]==0: # cell below is not blocked
-        ring_maze[1][col+1][up]=1       # open up the below cell
-        ring_maze[0][col+1][down]=1     # open up the exit cell
-    else:
-        ring_maze[0][col+1] = [1,1,1,1,1,1] # block the exit
-
-# establish bottom row of exits
-for col in range(width):
-    if ring_maze[height][col+1][blocked]==0: # cell above is not blocked
-        ring_maze[height][col+1][down]=1     # open up the above cell
-        ring_maze[height+1][col+1][up]=1     # open up the exit cell
-    else:
-        ring_maze[height+1][col+1] = [1,1,1,1,1,1] # block the exit
-        
-# establish left column of exits
-for row in range(height):
-    if ring_maze[row+1][1][blocked]==0: # cell to right is not blocked
-        ring_maze[row+1][1][left]=1       # open up the rightward cell
-        ring_maze[row+1][0][right]=1     # open up the exit cell
-    else:
-        ring_maze[row+1][0] = [1,1,1,1,1,1] # block the exit
-
-# establish left column of exits
-for row in range(height):
-    if ring_maze[row+1][width][blocked]==0: # cell to left is not blocked
-        ring_maze[row+1][width][right]=1       # open up the leftward cell
-        ring_maze[row+1][width+1][left]=1     # open up the exit cell
-    else:
-        ring_maze[row+1][width+1] = [1,1,1,1,1,1] # block the exit        
-
-logger.info("ring_maze cells created")
-logger.debug('ring_maze = %s', ring_maze)
 
         
 # Build the network of destinations and intersections
@@ -860,15 +860,15 @@ intersection = 2  # cell type value
 crossroads = 3    # cell type value
 neighbor = 1  # second data element
 distance = 2  #third data element
-cell_type = [[-1 for row in range(width)] for col in range(height)]
+cell_type = [[-1 for row in range(width+2)] for col in range(height+2)]
 
 # step 1 identify cell types:
-for row in range(height):
-    for col in range(width):
-        if maze[row][col][blocked]==0:
+for row in range(height+2):
+    for col in range(width+2):
+        if ring_maze[row][col][blocked]==0:
             dir_sum = 0
             for direction in range(4):
-                dir_sum = dir_sum + maze[row][col][direction]
+                dir_sum = dir_sum + ring_maze[row][col][direction]
             if dir_sum == 4:
                 cell_type[row][col]=crossroads
             elif dir_sum == 3:
@@ -884,8 +884,8 @@ col_element = 1
 type_element = 2
 neighbors = 3
 maze_map = []
-for row in range(height):
-    for col in range(width):
+for row in range(height+2):
+    for col in range(width+2):
         if cell_type[row][col] == destination or cell_type[row][col] == intersection or cell_type[row][col] == crossroads or (cell_type[row][col] == hallway and(row == 0 or col == 0 or row == height -1 or col == width -1)) :
             maze_map += [[row, col, cell_type[row][col], []]]
 #print(maze_map)    #debug step
@@ -938,9 +938,9 @@ logger.debug('map = %s', solved_maze_map)
 #for cell in solved_maze_map: # solved_maze_map will be the input to the pool
 def distance_item (cell): 
     if cell[2] == 1 and (cell[0] == 0
-                        or cell[0] == height-1
+                        or cell[0] == height #-1
                         or cell[1] == 0
-                        or cell[1] == width-1
+                        or cell[1] == width #-1
                         or maze_settings['start_end_anywhere']==True): # dead end on an edge
         start_point = [cell[0], cell[1], [[cell[3][0][1],cell[3][0][2],cell[3][0][3], cell[3][0][4], cell[3][0][5]]]]
         #print(start_point)
@@ -967,9 +967,9 @@ def distance_item (cell):
                 and ((destination[0]*width + destination[1]) > (start_point[0]*width + start_point[1]))
                 and destination[4] == 1
                 and (destination[0] == 0
-                     or destination[0] == height-1
+                     or destination[0] == height + 1
                      or destination[1] == 0
-                     or destination[1] == width -1
+                     or destination[1] == width + 1
                      or maze_settings['start_end_anywhere']==True)):
                 max_d = destination[2]
                 best_destination = copy.deepcopy(destination)
@@ -996,22 +996,27 @@ max_dist = 0
 for start_point in distance_list:
     if start_point is not None:
         for end_point in start_point[2]:
-            if (end_point[0] == 0 or end_point[0] == height-1 or end_point[1] == 0 or end_point[1] == width - 1 or maze_settings['start_end_anywhere']) and end_point[2] > max_dist:
+            if (end_point[0] == 0 or end_point[0] == height+1 or end_point[1] == 0 or end_point[1] == width + 1 or maze_settings['start_end_anywhere']) and end_point[2] > max_dist:
                 long_start_row = start_point[0]
                 long_start_col = start_point[1]
                 long_end_row = end_point[0]
                 long_end_col = end_point[1]
                 max_dist = end_point[2]
                 solution_list = end_point[3]
-logger.info("longest path identifed (%s cells)", max_dist)        
+logger.info("longest path identifed (%s cells)", max_dist)
+logger.info('solution_list = %s', solution_list)
 
-path=[[0 for row in range(width)] for col in range(height)]                
+
+path=[[0 for col in range(width)] for row in range(height)]                
 for cell in solution_list:
-    path[cell[0]][cell[1]] = 1
-path[long_end_row][long_end_col] = 1
+    if cell[0] > 0 and cell[0] <= height and cell[1] > 0 and cell[1] <= width:
+        path[cell[0]-1][cell[1]-1] = 1 
+if long_end_row > 0 and long_end_row <= height and long_end_col > 0 and long_end_col <= width: 
+    path[long_end_row-1][long_end_col-1] = 1
 solution_steps = 1
-solved = 1        
-                
+solved = 1
+
+
             
 
 
