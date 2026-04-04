@@ -878,6 +878,7 @@ for row in range(height+2):
             else:
                 cell_type[row][col]=hallway
 logger.info("maze cells categorized")
+logger.debug('maze cell categories = %s', cell_type)
 # step 2 reduce map
 row_element = 0
 col_element = 1
@@ -997,28 +998,43 @@ for start_point in distance_list:
     if start_point is not None:
         for end_point in start_point[2]:
             if (end_point[0] == 0 or end_point[0] == height+1 or end_point[1] == 0 or end_point[1] == width + 1 or maze_settings['start_end_anywhere']) and end_point[2] > max_dist:
+                # use ring start and end if they aren't on the ring, use adjacent coordinates if they are
+                solution_list = end_point[3]
                 long_start_row = start_point[0]
                 long_start_col = start_point[1]
+                if long_start_row  == 0 or long_start_row > height or long_start_col == 0 or long_start_col > width:
+                    long_start_row = solution_list[1][0]
+                    long_start_col = solution_list[1][1]
+
                 long_end_row = end_point[0]
                 long_end_col = end_point[1]
+                if long_end_row == 0 or long_end_row > height or long_end_col == 0 or long_end_col > width:
+                    long_end_row = solution_list[-1][0]
+                    long_end_col = solution_list[-1][1]
+                    
                 max_dist = end_point[2]
-                solution_list = end_point[3]
 logger.info("longest path identifed (%s cells)", max_dist)
-logger.debug('solution_list = %s', solution_list)
+logger.info('solution_list = %s', solution_list)
 
-
+# build the path
 path=[[0 for col in range(width)] for row in range(height)]                
 for cell in solution_list:
-    if cell[0] > 0 and cell[0] <= height and cell[1] > 0 and cell[1] <= width:
+    if cell[0] > 0 and cell[0] <= height and cell[1] > 0 and cell[1] <= width: # only use the cells not in the ring
         path[cell[0]-1][cell[1]-1] = 1 
-if long_end_row > 0 and long_end_row <= height and long_end_col > 0 and long_end_col <= width: 
+if long_end_row > 0 and long_end_row <= height and long_end_col > 0 and long_end_col <= width: # use end if the end is not in the ring
     path[long_end_row-1][long_end_col-1] = 1
 solution_steps = 1
 solved = 1
 
-
-            
-
+# translate the start and end points from ring coordinates to maze coordinates
+long_start_row = long_start_row -1
+long_start_col = long_start_col -1
+long_end_row = long_end_row -1
+long_end_col = long_end_col -1
+logger.info('long_start_row = %s', long_start_row)
+logger.info('long_start_col = %s', long_start_col)
+logger.info('long_end_row = %s', long_end_row)
+logger.info('long_end_col = %s', long_end_col)
 
 
 # start solving
