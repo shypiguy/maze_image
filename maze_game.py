@@ -105,6 +105,8 @@ def is_cruise (cell_row, cell_col):
         exit_count = exit_count + 1
     if exit_count == 2:
         is_it = True
+    if cell & cell_start == cell_start or cell & cell_end == cell_end:
+        is_it = False
     return is_it
 
 # function to identify the next cruisable cell
