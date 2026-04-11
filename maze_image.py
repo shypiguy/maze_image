@@ -1014,7 +1014,7 @@ for start_point in distance_list:
                     
                 max_dist = end_point[2]
 logger.info("longest path identifed (%s cells)", max_dist)
-logger.info('solution_list = %s', solution_list)
+logger.debug('solution_list = %s', solution_list)
 
 # build the path
 path=[[0 for col in range(width)] for row in range(height)]                
