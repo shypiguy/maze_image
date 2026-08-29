@@ -35,6 +35,8 @@ from logging.handlers import RotatingFileHandler
 import copy
 import multiprocessing, time
 import hue_analyzer
+import zipfile
+import os
 
 logging.basicConfig(handlers=[RotatingFileHandler('maze_image.log', mode='a', maxBytes=100000, backupCount=20)],
                     level=logging.INFO,
@@ -1142,20 +1144,26 @@ logger.info("background animation generated")
 
 
 # build the maze data file
+# Extract just the filename without the directory path for the zip contents
+base_out_name = os.path.basename(maze_settings['output_file'])
+
 mdf = {}
 mdf.update({"jsonType":"maze_image"})
 mdf.update({"version":"0.0.1"})
 mdf.update({"description":"no description given"})
 mdf.update({"metaData":"no medatadata given"})
-mdf.update({"name":maze_settings['output_file']})
+# Use base_out_name here instead of maze_settings['output_file']
+mdf.update({"name": base_out_name})
 mdf.update({"width":width})
 mdf.update({"height":height})
 mdf.update({"originalImage":maze_settings['input_file']})
-mdf.update({"gameImage":maze_settings['output_file']+"_alpha.png"})
+# Use base_out_name here
+mdf.update({"gameImage": base_out_name + "_alpha.png"})
 bg_images = []
 for index in range(8):
     file_index = index + 1
-    bg_images.append(maze_settings['output_file']+"_bg"+str(file_index)+".png")    
+    # Use base_out_name here
+    bg_images.append(base_out_name + "_bg" + str(file_index) + ".png")    
 mdf.update({"backgroundImages":bg_images})
 cells_out = []
 for row in range(height):
@@ -1173,7 +1181,45 @@ for row in range(height):
             cell_value = cell_value + 64
         cells_out.append(cell_value)
 mdf.update({"cells":cells_out})
-with open(maze_settings['output_file']+"_data.json", "w") as f:
+
+# Still use the original maze_settings['output_file'] to save the file to disk before zipping
+with open(maze_settings['output_file'] + "_data.json", "w") as f:
     f.write(json.dumps(mdf))
 logger.info("maze data file generated")
+
+# --- ZIP FILE PACKAGING ---
+logger.info("Packaging output files into a single zip archive")
+
+# Determine the zip file name based on the input parameter
+zip_filename = maze_settings['output_file'] + ".zip"
+
+# Compile a list of all potential output files the script can create
+files_to_zip = [
+    maze_settings['output_file'] + "_alpha.png",
+    maze_settings['output_file'] + "_data.json"
+]
+
+# Add conditionally generated files to the list
+if maze_settings.get('intermediate_images'):
+    files_to_zip.append(maze_settings['output_file'] + ".png")
+
+# The solution image is only created if 'solved' != 0
+# We can just check if it exists later, but let's add it to the check list
+files_to_zip.append(maze_settings['output_file'] + "_solution.png")
+
+# Add the 8 background images to the list
+for index in range(8):
+    files_to_zip.append(maze_settings['output_file'] + "_bg" + str(index + 1) + ".png")
+
+# Create the zip file and add the generated files
+with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
+    for file_path in files_to_zip:
+        if os.path.exists(file_path):
+            # Write the file to the zip archive, keeping only the base filename
+            zipf.write(file_path, os.path.basename(file_path))
+            
+            # Delete the unzipped file from the disk
+            os.remove(file_path)
+
+logger.info("Successfully created %s", zip_filename)
 logger.info("EXITING")
