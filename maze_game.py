@@ -2,7 +2,8 @@ import pygame, sys, random
 from pygame.locals import *
 import argparse
 import json
-
+import zipfile
+import io
 
 pygame.init()
  
@@ -47,9 +48,20 @@ parser = argparse.ArgumentParser()
 parser.add_argument("input_file",  help="the maze file to be played")
 args=parser.parse_args()
 
-# Load maze data
-f = open (args.input_file, "r")
-maze_data = json.loads(f.read())
+# Open the zip archive provided via command line
+archive = zipfile.ZipFile(args.input_file, 'r')
+
+# Find the json file inside the archive dynamically
+json_filename = next((name for name in archive.namelist() if name.endswith('.json')), None)
+
+if not json_filename:
+    print("Error: No .json file found in the provided zip archive.")
+    sys.exit(1)
+
+# Load maze data directly from the zip
+with archive.open(json_filename) as f:
+    # Read and decode the bytes to a string for json.loads
+    maze_data = json.loads(f.read().decode('utf-8'))
 
 # Load maze structure data
 cells = maze_data['cells']
@@ -71,9 +83,10 @@ for row in range(maze_height):
             end_col = col
             print((end_row, end_col))
             
-# Load maze image
+# Load maze image from zip
 image_file_location = maze_data['gameImage']
-o_maze_image = pygame.image.load(image_file_location).convert_alpha()
+with archive.open(image_file_location) as img_file:
+    o_maze_image = pygame.image.load(io.BytesIO(img_file.read())).convert_alpha()
 # Draw the target bullseye
 pygame.draw.circle(o_maze_image, (255,0,0), (end_col*8+4,end_row*8+4), 3)
 pygame.draw.circle(o_maze_image, (255,255,255), (end_col*8+4,end_row*8+4), 2)
@@ -82,11 +95,17 @@ pygame.draw.circle(o_maze_image, (255,0,0), (end_col*8+4,end_row*8+4), 1)
 maze_image = pygame.transform.scale_by(o_maze_image, ZOOM)
 maze_size = maze_image.get_size()
 
-# Load list of background images
+# Load list of background images from zip
 bg_images = []
 bg_image_locations = maze_data['backgroundImages']
-o_bg_images = [pygame.image.load(f'{i}') for i in bg_image_locations]
-bg_images = [pygame.image.load(f'{i}') for i in bg_image_locations]
+o_bg_images = []
+
+for loc in bg_image_locations:
+    with archive.open(loc) as img_file:
+        o_bg_images.append(pygame.image.load(io.BytesIO(img_file.read())))
+
+# Copy the original loaded images to the bg_images list
+bg_images = o_bg_images.copy()
 for i in range(len(bg_images)):
     bg_images[i] = pygame.transform.scale_by(o_bg_images[i], ZOOM)
 
