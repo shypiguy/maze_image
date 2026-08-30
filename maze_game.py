@@ -75,6 +75,8 @@ for row in range(maze_height):
         if cells[row*maze_width + col] & cell_start == cell_start:
             player_row = row
             player_col = col
+            previous_player_row = row
+            previous_player_col = col
             player_cell_data = cells[row*maze_width + col]
             # maybe let this happen naturally?
             been_there[row*maze_width + col] = 1
@@ -170,49 +172,42 @@ def next_cell (cell_row, cell_col, from_row, from_col):
         return [cell_row, cell_col]
 
 # procedure to leave a breadcrumb
-def breadcrumb (cell_row, cell_col):
+def breadcrumb (cell_row, cell_col, prev_cell_row, prev_cell_col):
     global been_there
     global maze_image
     global o_crumb_trail # Add global reference
     global crumb_trail
-    
-    # pick color and draw style
-    if cells[cell_row*maze_width + cell_col] & on_path == on_path:
-        crumb_color = (255,255,0,255) #yellow
-        # check above
-        if cell_row > 0:
-            if cells[(cell_row-1)*maze_width + cell_col] & on_path == on_path and \
-               cells[cell_row*maze_width + cell_col] & cango_up == cango_up and \
-               been_there[(cell_row-1)*maze_width + cell_col] == 1:
-                pygame.draw.rect(o_crumb_trail, crumb_color, (cell_col*8 + 3, cell_row *8 -4, 2, 8)) # Updated target
-        #check below
-        if cell_row < maze_height -1:
-            if cells[(cell_row+1)*maze_width + cell_col] & on_path == on_path and \
-               cells[cell_row*maze_width + cell_col] & cango_down == cango_down and \
-               been_there[(cell_row+1)*maze_width + cell_col] == 1:
-                pygame.draw.rect(o_crumb_trail, crumb_color, (cell_col*8 + 3, cell_row*8 + 4, 2, 8)) # Updated target
-        #check left
-        if cell_col > 0:
-            if cells[cell_row*maze_width + cell_col-1] & on_path == on_path and \
-               cells[cell_row*maze_width + cell_col] & cango_left == cango_left and \
-               been_there[cell_row*maze_width + cell_col-1] == 1:
-                pygame.draw.rect(o_crumb_trail, crumb_color, (cell_col*8-4, cell_row*8 + 3, 8, 2)) # Updated target
-        #Check right
-        if cell_col < maze_width - 1:
-            if cells[cell_row*maze_width + cell_col+1] & on_path == on_path and \
-               cells[cell_row*maze_width + cell_col] & cango_right == cango_right and \
-               been_there[cell_row*maze_width + cell_col+1] == 1:
-                pygame.draw.rect(o_crumb_trail, crumb_color, (cell_col*8+4, cell_row*8 + 3, 8, 2)) # Updated target
-                
+
+    if cell_row == prev_cell_row and cell_col == prev_cell_col:
+        return
+
+    # pick paint color based on whether we are entering or returning
+    if been_there[cell_row*maze_width+cell_col] == 1:
+        crumb_color = (255,255,0,0) #transparent
+        been_there[prev_cell_row*maze_width+prev_cell_col] = 0
     else:
-        crumb_color = (255,0,0,255) #red
-        pygame.draw.circle(o_crumb_trail, crumb_color, (cell_col*8+4,cell_row*8+4), 2) # Updated target
+        crumb_color = (255,255,0,255) #yellow
+
+    # determine direction of travel
+    if prev_cell_row > cell_row: #headed up
+        pygame.draw.rect(o_crumb_trail, crumb_color, (cell_col*8 + 3, cell_row *8 + 4, 2, 8)) 
+
+    if prev_cell_row < cell_row: #headed down
+        pygame.draw.rect(o_crumb_trail, crumb_color, (prev_cell_col*8 + 3, prev_cell_row *8 + 4, 2, 8)) 
+
+    if prev_cell_col < cell_col: #headed right
+        pygame.draw.rect(o_crumb_trail, crumb_color, (prev_cell_col*8 + 4, prev_cell_row *8 + 3, 8, 2)) 
+
+    if prev_cell_col > cell_col: #headed left
+        pygame.draw.rect(o_crumb_trail, crumb_color, (cell_col*8 + 4, cell_row *8 + 3, 8, 2)) 
 
     crumb_trail = pygame.transform.scale_by(o_crumb_trail, ZOOM)    
     been_there[cell_row*maze_width + cell_col] = 1
 
 # function to identify poistion of maze
 def maze_pos (player_row, player_col, leave_crumb=True):
+    global previous_player_row
+    global previous_player_col
     # cells are ZOOM*8 wide, ZOOM*8 tall, (zoom*8/2,zoom*8/2) is their center
     # screen is 640 by 480, center is 320,240
     new_x = player_col*(ZOOM*8)+(ZOOM*8/2)
@@ -220,9 +215,12 @@ def maze_pos (player_row, player_col, leave_crumb=True):
     new_origin = (-1*new_x+(WINDOW_WIDTH/2), -1*new_y+(WINDOW_HEIGHT/2))
     
     # Check the flag before dropping a crumb
-    if leave_crumb and been_there[player_row*maze_width + player_col] == 0:
-        breadcrumb(player_row, player_col)
-        
+    if leave_crumb: # and been_there[player_row*maze_width + player_col] == 0:
+        breadcrumb(player_row, player_col, previous_player_row, previous_player_col)
+
+        previous_player_row = player_row
+        previous_player_col = player_col
+
     return new_origin
 
 # Function to render the screen
@@ -321,8 +319,7 @@ def main () :
                     interim_pos = (old_pos[0] + (new_pos[0]-old_pos[0])/8*(step+1),old_pos[1] + (new_pos[1]-old_pos[1])/8*(step+1))
                     screen_paint(interim_pos, me_color)
                     fpsClock.tick(FPS)
-                maze_image = pygame.transform.scale_by(o_maze_image, ZOOM)
-                crumb_trail = pygame.transform.scale_by(o_crumb_trail, ZOOM) # Add this line
+                # determine if you can 'cruise' to the next cell, do so, or exit loop
                 cruise_cell = next_cell(new_player_row, new_player_col, player_row, player_col)
                 if cruise_cell[0] == new_player_row and cruise_cell[1] == new_player_col:
                     cruise = False
