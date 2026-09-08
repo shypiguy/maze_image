@@ -95,6 +95,22 @@ o_crumb_trail = pygame.Surface(o_maze_image.get_size(), pygame.SRCALPHA)
 o_crumb_trail = o_crumb_trail.convert_alpha()
 crumb_trail = pygame.transform.scale_by(o_crumb_trail, ZOOM)
 
+# Create a black surface to act as the reveal mask for the maze
+o_reveal_mask = pygame.Surface(o_maze_image.get_size(), pygame.SRCALPHA)
+o_reveal_mask = o_reveal_mask.convert_alpha()
+# make the walls transparent by mapping them from the transparent pixels
+# in the o_maze_image
+for row in range(o_maze_image.get_height()-1):
+    for col in range(o_maze_image.get_width()-1):
+        pixel_color = o_maze_image.get_at((col, row))
+        if pixel_color.a == 0:
+            o_reveal_mask.set_at((col, row),(0,0,0,0))
+        else:
+            o_reveal_mask.set_at((col, row),(0,0,0,255))
+
+reveal_mask = pygame.transform.scale_by(o_reveal_mask, ZOOM)
+
+
 # Draw the target bullseye
 pygame.draw.circle(o_maze_image, (255,0,0), (end_col*8+4,end_row*8+4), 3)
 pygame.draw.circle(o_maze_image, (255,255,255), (end_col*8+4,end_row*8+4), 2)
@@ -208,11 +224,15 @@ def breadcrumb (cell_row, cell_col, prev_cell_row, prev_cell_col):
 def maze_pos (player_row, player_col, leave_crumb=True):
     global previous_player_row
     global previous_player_col
+    global reveal_mask
     # cells are ZOOM*8 wide, ZOOM*8 tall, (zoom*8/2,zoom*8/2) is their center
     # screen is 640 by 480, center is 320,240
     new_x = player_col*(ZOOM*8)+(ZOOM*8/2)
     new_y = player_row*(ZOOM*8)+(ZOOM*8/2)
     new_origin = (-1*new_x+(WINDOW_WIDTH/2), -1*new_y+(WINDOW_HEIGHT/2))
+    # reveal a bit of the maze
+    pygame.draw.circle(o_reveal_mask, (0,0,0,0), (player_col*(8)+(8/2), player_row*(8)+(8/2)), 50)
+    reveal_mask = pygame.transform.scale_by(o_reveal_mask, ZOOM)
     
     # Check the flag before dropping a crumb
     if leave_crumb: # and been_there[player_row*maze_width + player_col] == 0:
@@ -228,6 +248,7 @@ def screen_paint (origin, player_color):
     global bg_index
     global bg_tick
     global WINDOW
+    global reveal_mask
     WINDOW.fill((0,0,0)) # black background
     # pick the next bg_images item to blit
     #bg_surface.blit(bg_images[bg_index], (0,0))
@@ -241,6 +262,8 @@ def screen_paint (origin, player_color):
             bg_index = 0
     # blit the maze
     WINDOW.blit(maze_image, origin)
+    # blit the mask
+    WINDOW.blit(reveal_mask, origin)
     # blit the crumb trail on top of the maze
     WINDOW.blit(crumb_trail, origin)    
     # blit the player dot
@@ -260,6 +283,8 @@ def main () :
     global bg_surface
     global bg_index
     global crumb_trail
+    global reveal_mask
+
     looping = True
     lum = 0
     lum_dir = 5
@@ -339,6 +364,7 @@ def main () :
         if zoomed:
             maze_image = pygame.transform.scale_by(o_maze_image, ZOOM)
             crumb_trail = pygame.transform.scale_by(o_crumb_trail, ZOOM) # Add this line
+            reveal_mask = pygame.transform.scale_by(o_reveal_mask, ZOOM)
             for i in range(len(bg_images)):
                 bg_images[i] = pygame.transform.scale_by(o_bg_images[i], ZOOM)
         if player_cell_data & on_path == on_path:
