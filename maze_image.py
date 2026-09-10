@@ -1105,10 +1105,10 @@ print ("done")
 # determine the right hue for background images
 im_hue_center = im_phav[0]
 bg_hue = im_hue_center
-if im_hue_center > 128:
-    bg_hue = im_hue_center - 107
-else:
-    bg_hue = im_hue_center + 107
+#if im_hue_center > 128:
+#    bg_hue = im_hue_center - 107
+#else:
+#    bg_hue = im_hue_center + 107
 
 logger.info("image hue center was %s, bg hue will be %s", im_phav,bg_hue) 
 

@@ -107,6 +107,11 @@ for row in range(o_maze_image.get_height()-1):
             o_reveal_mask.set_at((col, row),(0,0,0,0))
         else:
             o_reveal_mask.set_at((col, row),(0,0,0,255))
+# make blocked cells transparent by referencing the maze_data.cells
+for row in range(maze_height):
+    for col in range(maze_width):
+        if cells[row*maze_width+col] == 0:
+            pygame.draw.rect(o_reveal_mask, (0,0,0,0), (col*8, row*8, 8,8))
 
 reveal_mask = pygame.transform.scale_by(o_reveal_mask, ZOOM)
 
@@ -248,6 +253,7 @@ def screen_paint (origin, player_color):
     global bg_index
     global bg_tick
     global WINDOW
+    global o_reveal_mask
     global reveal_mask
     WINDOW.fill((0,0,0)) # black background
     # pick the next bg_images item to blit
@@ -263,6 +269,9 @@ def screen_paint (origin, player_color):
     # blit the maze
     WINDOW.blit(maze_image, origin)
     # blit the mask
+    if player_color == (0,255,0):
+        o_reveal_mask.fill((255,255,255,0))
+        reveal_mask = pygame.transform.scale_by(o_reveal_mask, ZOOM)
     WINDOW.blit(reveal_mask, origin)
     # blit the crumb trail on top of the maze
     WINDOW.blit(crumb_trail, origin)    
